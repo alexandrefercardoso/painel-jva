@@ -30,6 +30,13 @@ export function clearConfig() {
   client = null;
 }
 
+export function isConfigured(): boolean {
+  return getConfig() !== null;
+}
+
+export const MSG_SEM_CONFIG =
+  "Supabase não configurado: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas variáveis de ambiente da Vercel e faça um novo deploy.";
+
 let client: SupabaseClient | null = null;
 
 export function getClient(): SupabaseClient {
