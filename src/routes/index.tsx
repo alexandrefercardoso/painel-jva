@@ -78,6 +78,8 @@ function ListaClientes() {
               <th className="px-4 py-2 font-medium">Nome fantasia</th>
               <th className="px-4 py-2 font-medium">Status</th>
               <th className="px-4 py-2 font-medium">Pagamento</th>
+              <th className="px-4 py-2 font-medium">Valor mensal</th>
+              <th className="px-4 py-2 font-medium">Vencimento</th>
             </tr>
           </thead>
           <tbody>
@@ -94,11 +96,17 @@ function ListaClientes() {
                 <td className="px-4 py-2">
                   <StatusPagamentoBadge valor={cliente.status_pagamento} />
                 </td>
+                <td className="px-4 py-2">
+                  {cliente.valor_mensal !== null && cliente.valor_mensal !== undefined
+                    ? `R$ ${cliente.valor_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : "—"}
+                </td>
+                <td className="px-4 py-2">{cliente.dia_vencimento ?? "—"}</td>
               </tr>
             ))}
             {!carregando && filtrados.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
