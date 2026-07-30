@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const CONFIG_KEY = "jva.supabase.config";
-const SESSION_KEY = "jva.session";
 
 export type PainelConfig = { url: string; anonKey: string };
 
