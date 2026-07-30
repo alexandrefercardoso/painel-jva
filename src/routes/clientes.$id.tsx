@@ -84,6 +84,10 @@ function EditarCliente() {
     setMsg(null);
     const payload = {
       nome_fantasia: cliente.nome_fantasia || null,
+      contato: cliente.contato || null,
+      telefone: cliente.telefone || null,
+      email_contato: cliente.email_contato || null,
+      email_login_supabase: cliente.email_login_supabase || null,
       supabase_url: cliente.supabase_url || null,
       supabase_anon_key: cliente.supabase_anon_key || null,
       valor_mensal: cliente.valor_mensal ?? null,
