@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { PainelGate } from "@/components/PainelGate";
+import { PainelLayout } from "@/components/PainelLayout";
 import { getClient, type Cliente, type Dominio } from "@/lib/painel-db";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +21,9 @@ export const Route = createFileRoute("/clientes/$id")({
     ],
   }),
   component: () => (
-    <PainelGate>
+    <PainelLayout>
       <EditarCliente />
-    </PainelGate>
+    </PainelLayout>
   ),
 });
 
