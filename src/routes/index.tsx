@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PainelLayout } from "@/components/PainelLayout";
-import { getClient, type Cliente } from "@/lib/painel-db";
+import { getClient, isConfigured, MSG_SEM_CONFIG, type Cliente } from "@/lib/painel-db";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
