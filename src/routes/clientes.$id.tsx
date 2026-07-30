@@ -29,6 +29,10 @@ export const Route = createFileRoute("/clientes/$id")({
 
 const vazio: Partial<Cliente> = {
   nome_fantasia: "",
+  contato: "",
+  telefone: "",
+  email_contato: "",
+  email_login_supabase: "",
   supabase_url: "",
   supabase_anon_key: "",
   valor_mensal: null,
