@@ -33,8 +33,10 @@ export function clearConfig() {
 let client: SupabaseClient | null = null;
 
 export function getClient(): SupabaseClient {
-  const config = getConfig();
-  if (!config) throw new Error("Conexão com o Supabase não configurada.");
+  const config = getConfig() ?? {
+    url: "https://placeholder.supabase.co",
+    anonKey: "placeholder-anon-key",
+  };
   if (!client) {
     client = createClient(config.url, config.anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
