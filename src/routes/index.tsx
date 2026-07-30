@@ -38,6 +38,11 @@ function ListaClientes() {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
+    if (!isConfigured()) {
+      setErro(MSG_SEM_CONFIG);
+      setCarregando(false);
+      return;
+    }
     getClient()
       .from("clientes")
       .select("*")
