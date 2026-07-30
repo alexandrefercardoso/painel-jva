@@ -2,14 +2,20 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const CONFIG_KEY = "jva.supabase.config";
 
+// Projeto Supabase fixo do painel (usado quando não há variáveis de ambiente).
+const DEFAULT_URL = "https://hepvdpktubhcklerdvqb.supabase.co";
+const DEFAULT_ANON_KEY = "";
+
 export type PainelConfig = { url: string; anonKey: string };
 
 export function getConfig(): PainelConfig | null {
-  if (typeof window === "undefined") return null;
-  const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const envKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined;
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL;
+  const envKey =
+    ((import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+      import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined) || DEFAULT_ANON_KEY;
   if (envUrl && envKey) return { url: envUrl, anonKey: envKey };
+  if (typeof window === "undefined") return null;
+
   const raw = window.localStorage.getItem(CONFIG_KEY);
   if (!raw) return null;
   try {
