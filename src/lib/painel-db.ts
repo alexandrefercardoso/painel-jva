@@ -4,7 +4,7 @@ const CONFIG_KEY = "jva.supabase.config";
 
 // Projeto Supabase fixo do painel (usado quando não há variáveis de ambiente).
 const DEFAULT_URL = "https://hepvdpktubhcklerdvqb.supabase.co";
-const DEFAULT_ANON_KEY = "";
+const DEFAULT_ANON_KEY = "sb_publishable_bhj08eHfAOnjwHWuLDZWjw_ZmBaCbFy";
 
 export type PainelConfig = { url: string; anonKey: string };
 
