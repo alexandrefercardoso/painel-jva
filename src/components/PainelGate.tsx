@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { getConfig, setConfig, getSession, clearSession, login } from "@/lib/painel-db";
+import { getConfig, setConfig } from "@/lib/painel-db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,53 +45,10 @@ function ConfigForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function LoginForm({ onDone }: { onDone: () => void }) {
-  const [usuario, setUsuario] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
-
-  return (
-    <form
-      className="space-y-3"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setCarregando(true);
-        setErro(null);
-        try {
-          await login(usuario, senha);
-          onDone();
-        } catch (err) {
-          setErro(err instanceof Error ? err.message : "Falha no login.");
-        } finally {
-          setCarregando(false);
-        }
-      }}
-    >
-      <div className="space-y-1">
-        <Label htmlFor="usuario">Usuário</Label>
-        <Input id="usuario" value={usuario} onChange={(e) => setUsuario(e.target.value)} required />
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="senha">Senha</Label>
-        <Input id="senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
-      </div>
-      {erro && <p className="text-sm text-destructive">{erro}</p>}
-      <Button type="submit" className="w-full" disabled={carregando}>
-        {carregando ? "Entrando..." : "Entrar"}
-      </Button>
-    </form>
-  );
-}
-
 export function PainelGate({ children }: { children: ReactNode }) {
-  const [estado, setEstado] = useState<"carregando" | "config" | "login" | "ok">("carregando");
+  const [estado, setEstado] = useState<"carregando" | "config" | "ok">("carregando");
 
-  const avaliar = () => {
-    if (!getConfig()) setEstado("config");
-    else if (!getSession()) setEstado("login");
-    else setEstado("ok");
-  };
+  const avaliar = () => setEstado(getConfig() ? "ok" : "config");
 
   useEffect(avaliar, []);
 
@@ -102,12 +59,6 @@ export function PainelGate({ children }: { children: ReactNode }) {
         <ConfigForm onDone={avaliar} />
       </Card>
     );
-  if (estado === "login")
-    return (
-      <Card title="Acesso ao painel de gestão.">
-        <LoginForm onDone={avaliar} />
-      </Card>
-    );
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -116,16 +67,6 @@ export function PainelGate({ children }: { children: ReactNode }) {
           <Link to="/" className="text-base font-semibold text-foreground">
             JVA Sistemas
           </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              clearSession();
-              avaliar();
-            }}
-          >
-            Sair
-          </Button>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>

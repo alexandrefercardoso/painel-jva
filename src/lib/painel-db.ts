@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const CONFIG_KEY = "jva.supabase.config";
-const SESSION_KEY = "jva.session";
 
 export type PainelConfig = { url: string; anonKey: string };
 
@@ -44,53 +43,6 @@ export function getClient(): SupabaseClient {
   return client;
 }
 
-export type Sessao = { id: string; login: string };
-
-export function getSession(): Sessao | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as Sessao;
-  } catch {
-    return null;
-  }
-}
-
-export function setSession(session: Sessao) {
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-export function clearSession() {
-  window.localStorage.removeItem(SESSION_KEY);
-}
-
-const LOGIN_COLUNAS = ["email", "usuario", "username", "login"];
-const SENHA_COLUNAS = ["senha", "password"];
-
-/** Login simples direto na tabela profiles (uso pessoal, sem Supabase Auth). */
-export async function login(usuario: string, senha: string): Promise<Sessao> {
-  const supabase = getClient();
-  const { data, error } = await supabase.from("profiles").select("*");
-  if (error) throw new Error(error.message);
-
-  const rows = (data ?? []) as Array<Record<string, unknown>>;
-  const alvo = rows.find((row) => {
-    const loginOk = LOGIN_COLUNAS.some(
-      (col) => typeof row[col] === "string" && (row[col] as string).toLowerCase() === usuario.toLowerCase(),
-    );
-    const senhaOk = SENHA_COLUNAS.some((col) => typeof row[col] === "string" && row[col] === senha);
-    return loginOk && senhaOk;
-  });
-
-  if (!alvo) throw new Error("Usuário ou senha inválidos.");
-  const sessao: Sessao = {
-    id: String(alvo.id ?? usuario),
-    login: usuario,
-  };
-  setSession(sessao);
-  return sessao;
-}
 
 export type Cliente = {
   id: string;
