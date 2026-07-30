@@ -29,6 +29,10 @@ export const Route = createFileRoute("/clientes/$id")({
 
 const vazio: Partial<Cliente> = {
   nome_fantasia: "",
+  contato: "",
+  telefone: "",
+  email_contato: "",
+  email_login_supabase: "",
   supabase_url: "",
   supabase_anon_key: "",
   valor_mensal: null,
@@ -80,6 +84,10 @@ function EditarCliente() {
     setMsg(null);
     const payload = {
       nome_fantasia: cliente.nome_fantasia || null,
+      contato: cliente.contato || null,
+      telefone: cliente.telefone || null,
+      email_contato: cliente.email_contato || null,
+      email_login_supabase: cliente.email_login_supabase || null,
       supabase_url: cliente.supabase_url || null,
       supabase_anon_key: cliente.supabase_anon_key || null,
       valor_mensal: cliente.valor_mensal ?? null,
@@ -159,6 +167,22 @@ function EditarCliente() {
         <div className="space-y-1 sm:col-span-2">
           <Label htmlFor="nome">Nome fantasia</Label>
           <Input id="nome" value={cliente.nome_fantasia ?? ""} onChange={(e) => campo("nome_fantasia", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="contato">Contato</Label>
+          <Input id="contato" value={cliente.contato ?? ""} onChange={(e) => campo("contato", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="telefone">Número de telefone</Label>
+          <Input id="telefone" value={cliente.telefone ?? ""} onChange={(e) => campo("telefone", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="emailc">E-mail do contato</Label>
+          <Input id="emailc" type="email" value={cliente.email_contato ?? ""} onChange={(e) => campo("email_contato", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="emails">E-mail do login do Supabase</Label>
+          <Input id="emails" type="email" value={cliente.email_login_supabase ?? ""} onChange={(e) => campo("email_login_supabase", e.target.value)} />
         </div>
         <div className="space-y-1">
           <Label htmlFor="surl">Supabase URL</Label>
