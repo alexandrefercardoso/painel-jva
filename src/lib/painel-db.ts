@@ -47,6 +47,10 @@ export function getClient(): SupabaseClient {
 export type Cliente = {
   id: string;
   nome_fantasia: string | null;
+  contato: string | null;
+  telefone: string | null;
+  email_contato: string | null;
+  email_login_supabase: string | null;
   supabase_url: string | null;
   supabase_anon_key: string | null;
   valor_mensal: number | null;
