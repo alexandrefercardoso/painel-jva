@@ -253,25 +253,33 @@ function EditarCliente() {
               </Button>
             </div>
             <ul className="divide-y rounded-md border">
-              {dominios.map((d) => (
-                <li key={d.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                  <Input
-                    value={d.dominio ?? ""}
-                    onChange={(e) =>
-                      setDominios((lista) =>
-                        lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
-                      )
-                    }
-                    onBlur={(e) => salvarDominio(String(d.id), e.target.value)}
-                  />
-                  <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "")}>
-                    Salvar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
-                    Remover
-                  </Button>
-                </li>
-              ))}
+              {dominios.map((d) => {
+                const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
+                return (
+                  <li key={d.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <Input
+                      value={d.dominio ?? ""}
+                      onChange={(e) =>
+                        setDominios((lista) =>
+                          lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
+                        )
+                      }
+                      onBlur={(e) => salvarDominio(String(d.id), e.target.value)}
+                    />
+                    <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "")}>
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={urlDominio} target="_blank" rel="noopener noreferrer">
+                        Abrir
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
+                      Remover
+                    </Button>
+                  </li>
+                );
+              })}
               {dominios.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio vinculado.</li>}
             </ul>
           </>
