@@ -59,24 +59,49 @@ export function getClient(): SupabaseClient {
 }
 
 
+export type ProdutoTipo = "MeuPedix" | "Silun";
+
 export type Cliente = {
   id: string;
   nome_fantasia: string | null;
   contato: string | null;
   telefone: string | null;
   email_contato: string | null;
-  email_login_supabase: string | null;
-  supabase_url: string | null;
-  supabase_anon_key: string | null;
   valor_mensal: number | null;
   dia_vencimento: number | null;
   status_pagamento: string | null;
   observacoes: string | null;
   ativo: boolean | null;
+  produto: ProdutoTipo | null;
 };
+
+export type ClienteMeuPedix = {
+  id?: string;
+  cliente_id: string;
+  email_login_supabase: string | null;
+  supabase_url: string | null;
+  supabase_anon_key: string | null;
+};
+
+export type ClienteSilun = {
+  id?: string;
+  cliente_id: string;
+  empresa_id: string | null;
+  modulos_contratados: string[] | null;
+};
+
+export const OPCOES_MODULOS_SILUN = [
+  "Núcleo",
+  "PDV",
+  "Cereais",
+  "Rural",
+  "Transportadora",
+  "Defensivo",
+] as const;
 
 export type Dominio = {
   id: string;
   cliente_id: string;
   dominio: string | null;
 };
+

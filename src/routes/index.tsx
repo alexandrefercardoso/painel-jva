@@ -31,6 +31,13 @@ export function StatusPagamentoBadge({ valor }: { valor: string | null }) {
   return <Badge variant={variant}>{rotulo}</Badge>;
 }
 
+export function ProdutoBadge({ valor }: { valor: string | null }) {
+  if (valor && valor.toString().toLowerCase() === "silun") {
+    return <Badge variant="outline" className="border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-400">Silun</Badge>;
+  }
+  return <Badge variant="outline" className="border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400">MeuPedix</Badge>;
+}
+
 function ListaClientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [busca, setBusca] = useState("");
@@ -81,6 +88,7 @@ function ListaClientes() {
           <thead className="border-b bg-muted/50 text-left text-muted-foreground">
             <tr>
               <th className="px-4 py-2 font-medium">Nome fantasia</th>
+              <th className="px-4 py-2 font-medium">Produto</th>
               <th className="px-4 py-2 font-medium">Status</th>
               <th className="px-4 py-2 font-medium">Pagamento</th>
               <th className="px-4 py-2 font-medium">Valor mensal</th>
@@ -94,6 +102,9 @@ function ListaClientes() {
                   <Link to="/clientes/$id" params={{ id: String(cliente.id) }} className="font-medium text-foreground hover:underline">
                     {cliente.nome_fantasia ?? "(sem nome)"}
                   </Link>
+                </td>
+                <td className="px-4 py-2">
+                  <ProdutoBadge valor={cliente.produto} />
                 </td>
                 <td className="px-4 py-2">
                   <Badge variant={cliente.ativo ? "default" : "secondary"}>{cliente.ativo ? "Ativo" : "Inativo"}</Badge>
@@ -111,7 +122,7 @@ function ListaClientes() {
             ))}
             {!carregando && filtrados.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
