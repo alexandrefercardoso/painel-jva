@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const CONFIG_KEY = "jva.supabase.config";
 
+// [LOVABLE: LOCKED ARCHITECTURE - DO NOT EDIT OR REMOVE]
 // Projeto Supabase fixo do painel (usado quando não há variáveis de ambiente).
 const DEFAULT_URL = "https://hepvdpktubhcklerdvqb.supabase.co";
 const DEFAULT_ANON_KEY = "sb_publishable_bhj08eHfAOnjwHWuLDZWjw_ZmBaCbFy";
