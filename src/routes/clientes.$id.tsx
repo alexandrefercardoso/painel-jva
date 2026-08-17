@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PainelLayout } from "@/components/PainelLayout";
 import {
   getClient,
@@ -74,6 +74,26 @@ function EditarCliente() {
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+
+  const [filtroDominio, setFiltroDominio] = useState("");
+  const [ordemDominios, setOrdemDominios] = useState<"original" | "asc" | "desc">("original");
+
+  const dominiosVisiveis = useMemo(() => {
+    const termo = filtroDominio.trim().toLowerCase();
+    let lista = dominios;
+    if (termo) {
+      lista = lista.filter((d) => (d.dominio ?? "").toLowerCase().includes(termo));
+    }
+    if (ordemDominios === "asc" || ordemDominios === "desc") {
+      lista = [...lista].sort((a, b) => {
+        const valA = a.dominio ?? "";
+        const valB = b.dominio ?? "";
+        const comp = valA.localeCompare(valB, "pt-BR", { sensitivity: "base", numeric: true });
+        return ordemDominios === "asc" ? comp : -comp;
+      });
+    }
+    return lista;
+  }, [dominios, filtroDominio, ordemDominios]);
 
   const carregarDominios = async (cid: string) => {
     const { data, error } = await getClient().from("dominios").select("*").eq("cliente_id", cid);
@@ -425,8 +445,36 @@ function EditarCliente() {
                   Adicionar
                 </Button>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  aria-label="Filtrar domínios"
+                  placeholder="Filtrar domínios..."
+                  value={filtroDominio}
+                  onChange={(e) => setFiltroDominio(e.target.value)}
+                  className="max-w-xs"
+                />
+                <select
+                  aria-label="Ordenar domínios"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={ordemDominios}
+                  onChange={(e) => setOrdemDominios(e.target.value as "original" | "asc" | "desc")}
+                >
+                  <option value="original">Ordem original</option>
+                  <option value="asc">A → Z</option>
+                  <option value="desc">Z → A</option>
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Alternar ordenação por domínio"
+                  onClick={() => setOrdemDominios((prev) => (prev === "desc" ? "asc" : "desc"))}
+                >
+                  {ordemDominios !== "desc" ? "Domínio ↑" : "Domínio ↓"}
+                </Button>
+              </div>
               <ul className="divide-y rounded-md border">
-                {dominios.map((d) => {
+                {dominiosVisiveis.map((d) => {
                   const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
                   return (
                     <li key={d.id} className="flex items-center gap-2 px-3 py-2 text-sm">
@@ -454,6 +502,9 @@ function EditarCliente() {
                   );
                 })}
                 {dominios.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio vinculado.</li>}
+                {dominios.length > 0 && dominiosVisiveis.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio encontrado.</li>
+                )}
               </ul>
             </>
           )}
