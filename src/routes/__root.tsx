@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-title", content: "JVA Sistemas" },
     ],
     links: [
-      { rel: "manifest", href: "/manifest.json", crossOrigin: "use-credentials" },
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       {
         rel: "stylesheet",
