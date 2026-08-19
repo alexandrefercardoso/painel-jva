@@ -74,7 +74,6 @@ export type Cliente = {
   observacoes: string | null;
   ativo: boolean | null;
   produto: ProdutoTipo | null;
-  // Removido: dominio: string | null;
 };
 
 export type ClienteMeuPedix = {
@@ -90,7 +89,7 @@ export type ClienteSilun = {
   cliente_id: string;
   empresa_id: string | null;
   modulos_contratados: string[] | null;
-  email_login_supabase: string | null;
+  supabase_login_email: string | null;
   supabase_url: string | null;
   supabase_anon_key: string | null;
 };
