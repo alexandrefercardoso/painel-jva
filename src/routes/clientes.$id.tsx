@@ -256,10 +256,12 @@ else if (slData) {
 
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const prod = cliente.produto;
+    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
+    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
     const { error } = await getClient()
       .from(tabela)
-      .insert({ cliente_id: clienteId, dominio: novoDominio.trim() });
+      .insert({ [fk]: clienteId, dominio: novoDominio.trim() });
     if (error) setErro(error.message);
     else {
       setNovoDominio("");
