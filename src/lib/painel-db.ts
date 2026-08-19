@@ -74,7 +74,7 @@ export type Cliente = {
   observacoes: string | null;
   ativo: boolean | null;
   produto: ProdutoTipo | null;
-  dominio: string | null;
+  // Removido: dominio: string | null;
 };
 
 export type ClienteMeuPedix = {

@@ -47,7 +47,7 @@ const vazio: Partial<Cliente> = {
   status_pagamento: "em_dia",
   observacoes: "",
   ativo: true,
-  dominio: "",
+  // Removido: dominio: "",
 };
 
 const meupedixVazio: Partial<ClienteMeuPedix> = {
@@ -100,8 +100,9 @@ function EditarCliente() {
   }, [dominios, filtroDominio, ordemDominios]);
 
   const carregarDominios = async (cid: string) => {
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
     const { data, error } = await getClient()
-      .from("dominios_cliente")
+      .from(tabela)
       .select("*")
       .eq("cliente_id", cid)
       .order("created_at", { ascending: true });
@@ -195,7 +196,7 @@ else if (slData) {
       status_pagamento: cliente.status_pagamento ?? null,
       observacoes: cliente.observacoes || null,
       ativo: cliente.ativo ?? true,
-      dominio: cliente.dominio || null,
+      // Removido: dominio: cliente.dominio || null,
     };
 
     let cid = clienteId;
@@ -252,8 +253,9 @@ else if (slData) {
 
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
     const { error } = await getClient()
-      .from("dominios_cliente")
+      .from(tabela)
       .insert({ cliente_id: clienteId, dominio: novoDominio.trim() });
     if (error) setErro(error.message);
     else {
@@ -263,8 +265,9 @@ else if (slData) {
   };
 
   const salvarDominio = async (dominioId: string, valor: string) => {
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
     const { error } = await getClient()
-      .from("dominios_cliente")
+      .from(tabela)
       .update({ dominio: valor.trim() })
       .eq("id", dominioId);
     if (error) setErro(error.message);
@@ -272,14 +275,16 @@ else if (slData) {
   };
 
   const removerDominio = async (dominioId: string) => {
-    const { error } = await getClient().from("dominios_cliente").delete().eq("id", dominioId);
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const { error } = await getClient().from(tabela).delete().eq("id", dominioId);
     if (error) setErro(error.message);
     else if (clienteId) carregarDominios(clienteId);
   };
 
   const excluirCliente = async () => {
     if (!clienteId || !confirm("Excluir este cliente e seus dados vinculados?")) return;
-    await getClient().from("dominios_cliente").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios_meupedix").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios_silun").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_meupedix").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_silun").delete().eq("cliente_id", clienteId);
     const { error } = await getClient().from("clientes").delete().eq("id", clienteId);
@@ -391,15 +396,7 @@ else if (slData) {
           />
         </div>
 
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="dominio_principal">Domínio</Label>
-          <Input
-            id="dominio_principal"
-            placeholder="cliente.exemplo.com.br"
-            value={cliente.dominio ?? ""}
-            onChange={(e) => campo("dominio", e.target.value)}
-          />
-        </div>
+        {/* Removido campo de domínio único do formulário de cliente */}
 
         {cliente.produto === "Silun" && (
           <>
