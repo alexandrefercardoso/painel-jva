@@ -288,7 +288,7 @@ else if (slData) {
 
   const excluirCliente = async () => {
     if (!clienteId || !confirm("Excluir este cliente e seus dados vinculados?")) return;
-    await getClient().from("dominios_meupedix").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios").delete().eq("cliente_id", clienteId);
     await getClient().from("dominios_silun").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_meupedix").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_silun").delete().eq("cliente_id", clienteId);
