@@ -59,7 +59,7 @@ const meupedixVazio: Partial<ClienteMeuPedix> = {
 const silunVazio: Partial<ClienteSilun> = {
   empresa_id: "",
   modulos_contratados: [],
-  email_login_supabase: "",
+  supabase_login_email: "",
   supabase_url: "",
   supabase_anon_key: "",
 };
@@ -163,7 +163,7 @@ else if (slData) {
             } else {
               setSilun({
                 ...silunVazio,
-                email_login_supabase: rawCli.email_login_supabase ?? "",
+                supabase_login_email: rawCli.email_login_supabase ?? "",
                 supabase_url: rawCli.supabase_url ?? "",
                 supabase_anon_key: rawCli.supabase_anon_key ?? "",
               });
@@ -240,7 +240,7 @@ else if (slData) {
         cliente_id: cid,
         empresa_id: silun.empresa_id || null,
         modulos_contratados: silun.modulos_contratados || [],
-        email_login_supabase: silun.email_login_supabase || null,
+        supabase_login_email: silun.supabase_login_email || null,
         supabase_url: silun.supabase_url || null,
         supabase_anon_key: silun.supabase_anon_key || null,
       };
@@ -362,12 +362,12 @@ else if (slData) {
           <Input
             id="emails"
             type="email"
-            value={cliente.produto === "MeuPedix" ? meupedix.email_login_supabase ?? "" : silun.email_login_supabase ?? ""}
+            value={cliente.produto === "MeuPedix" ? meupedix.email_login_supabase ?? "" : silun.supabase_login_email ?? ""}
             onChange={(e) => {
               if (cliente.produto === "MeuPedix") {
                 setMeuPedix((prev) => ({ ...prev, email_login_supabase: e.target.value }));
               } else {
-                setSilun((prev) => ({ ...prev, email_login_supabase: e.target.value }));
+                setSilun((prev) => ({ ...prev, supabase_login_email: e.target.value }));
               }
             }}
           />
