@@ -253,7 +253,7 @@ else if (slData) {
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
     const { error } = await getClient()
-      .from("dominios")
+      .from("dominios_cliente")
       .insert({ cliente_id: clienteId, dominio: novoDominio.trim() });
     if (error) setErro(error.message);
     else {
@@ -264,22 +264,22 @@ else if (slData) {
 
   const salvarDominio = async (dominioId: string, valor: string) => {
     const { error } = await getClient()
-      .from("dominios")
-      .update({ dominio: valor.trim() || null })
+      .from("dominios_cliente")
+      .update({ dominio: valor.trim() })
       .eq("id", dominioId);
     if (error) setErro(error.message);
     else setMsg("Domínio atualizado.");
   };
 
   const removerDominio = async (dominioId: string) => {
-    const { error } = await getClient().from("dominios").delete().eq("id", dominioId);
+    const { error } = await getClient().from("dominios_cliente").delete().eq("id", dominioId);
     if (error) setErro(error.message);
     else if (clienteId) carregarDominios(clienteId);
   };
 
   const excluirCliente = async () => {
     if (!clienteId || !confirm("Excluir este cliente e seus dados vinculados?")) return;
-    await getClient().from("dominios").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios_cliente").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_meupedix").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_silun").delete().eq("cliente_id", clienteId);
     const { error } = await getClient().from("clientes").delete().eq("id", clienteId);
@@ -478,81 +478,66 @@ else if (slData) {
         </div>
       </section>
 
-      {cliente.produto === "MeuPedix" && (
+      {clienteId && (
         <section className="space-y-3 rounded-lg border bg-card p-4">
           <h2 className="font-medium text-foreground">Domínios</h2>
-          {!clienteId && <p className="text-sm text-muted-foreground">Salve o cliente para adicionar domínios.</p>}
-          {clienteId && (
-            <>
-              <div className="flex gap-2">
-                <Input placeholder="exemplo.com.br" value={novoDominio} onChange={(e) => setNovoDominio(e.target.value)} />
-                <Button variant="secondary" onClick={adicionarDominio}>
-                  Adicionar
-                </Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  aria-label="Filtrar domínios"
-                  placeholder="Filtrar domínios..."
-                  value={filtroDominio}
-                  onChange={(e) => setFiltroDominio(e.target.value)}
-                  className="max-w-xs"
-                />
-                <select
-                  aria-label="Ordenar domínios"
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                  value={ordemDominios}
-                  onChange={(e) => setOrdemDominios(e.target.value as "original" | "asc" | "desc")}
-                >
-                  <option value="original">Ordem original</option>
-                  <option value="asc">A → Z</option>
-                  <option value="desc">Z → A</option>
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label="Alternar ordenação por domínio"
-                  onClick={() => setOrdemDominios((prev) => (prev === "desc" ? "asc" : "desc"))}
-                >
-                  {ordemDominios !== "desc" ? "Domínio ↑" : "Domínio ↓"}
-                </Button>
-              </div>
-              <ul className="divide-y rounded-md border">
-                {dominiosVisiveis.map((d) => {
-                  const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
-                  return (
-                    <li key={d.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                      <Input
-                        value={d.dominio ?? ""}
-                        onChange={(e) =>
-                          setDominios((lista) =>
-                            lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
-                          )
-                        }
-                        onBlur={(e) => salvarDominio(String(d.id), e.target.value)}
-                      />
-                      <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "")}>
-                        Salvar
-                      </Button>
-                      <Button variant="ghost" size="sm" asChild>
-                        <a href={urlDominio} target="_blank" rel="noopener noreferrer">
-                          Abrir
-                        </a>
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
-                        Remover
-                      </Button>
-                    </li>
-                  );
-                })}
-                {dominios.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio vinculado.</li>}
-                {dominios.length > 0 && dominiosVisiveis.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio encontrado.</li>
-                )}
-              </ul>
-            </>
-          )}
+          <div className="flex gap-2">
+            <Input placeholder="exemplo.com.br" value={novoDominio} onChange={(e) => setNovoDominio(e.target.value)} />
+            <Button variant="secondary" onClick={adicionarDominio}>
+              Adicionar
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              aria-label="Filtrar domínios"
+              placeholder="Filtrar domínios..."
+              value={filtroDominio}
+              onChange={(e) => setFiltroDominio(e.target.value)}
+              className="max-w-xs"
+            />
+            <select
+              aria-label="Ordenar domínios"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={ordemDominios}
+              onChange={(e) => setOrdemDominios(e.target.value as "original" | "asc" | "desc")}
+            >
+              <option value="original">Ordem original</option>
+              <option value="asc">Domínio (A-Z)</option>
+              <option value="desc">Domínio (Z-A)</option>
+            </select>
+          </div>
+          <ul className="divide-y rounded-md border">
+            {dominiosVisiveis.map((d) => {
+              const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
+              return (
+                <li key={d.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                  <Input
+                    value={d.dominio ?? ""}
+                    onChange={(e) =>
+                      setDominios((lista) =>
+                        lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
+                      )
+                    }
+                  />
+                  <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio)}>
+                    Salvar
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={urlDominio} target="_blank" rel="noopener noreferrer">
+                      Abrir
+                    </a>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
+                    Remover
+                  </Button>
+                </li>
+              );
+            })}
+            {dominios.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio vinculado.</li>}
+            {dominios.length > 0 && dominiosVisiveis.length === 0 && (
+              <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio encontrado.</li>
+            )}
+          </ul>
         </section>
       )}
 
