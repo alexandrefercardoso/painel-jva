@@ -270,7 +270,7 @@ else if (slData) {
   };
 
   const salvarDominio = async (dominioId: string, valor: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
     const { error } = await getClient()
       .from(tabela)
       .update({ dominio: valor.trim() })
@@ -280,7 +280,7 @@ else if (slData) {
   };
 
   const removerDominio = async (dominioId: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
     const { error } = await getClient().from(tabela).delete().eq("id", dominioId);
     if (error) setErro(error.message);
     else if (clienteId) carregarDominios(clienteId);
