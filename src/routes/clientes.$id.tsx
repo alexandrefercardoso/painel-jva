@@ -100,7 +100,11 @@ function EditarCliente() {
   }, [dominios, filtroDominio, ordemDominios]);
 
   const carregarDominios = async (cid: string) => {
-    const { data, error } = await getClient().from("dominios").select("*").eq("cliente_id", cid);
+    const { data, error } = await getClient()
+      .from("dominios_cliente")
+      .select("*")
+      .eq("cliente_id", cid)
+      .order("created_at", { ascending: true });
     if (error) setErro(error.message);
     else setDominios((data ?? []) as Dominio[]);
   };
