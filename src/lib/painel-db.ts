@@ -107,6 +107,7 @@ export const OPCOES_MODULOS_SILUN = [
 export type Dominio = {
   id: string;
   cliente_id: string;
-  dominio: string | null;
+  dominio: string;
+  created_at?: string;
 };
 
