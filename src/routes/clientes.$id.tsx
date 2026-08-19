@@ -101,11 +101,12 @@ function EditarCliente() {
 
   const carregarDominios = async (cid: string, prodOverride?: ProdutoTipo) => {
     const prod = prodOverride || cliente.produto;
-    const tabela = prod === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
+    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
     const { data, error } = await getClient()
       .from(tabela)
       .select("*")
-      .eq("cliente_id", cid)
+      .eq(fk, cid)
       .order("created_at", { ascending: true });
     if (error) setErro(error.message);
     else setDominios((data ?? []) as Dominio[]);
@@ -255,10 +256,12 @@ else if (slData) {
 
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const prod = cliente.produto;
+    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
+    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
     const { error } = await getClient()
       .from(tabela)
-      .insert({ cliente_id: clienteId, dominio: novoDominio.trim() });
+      .insert({ [fk]: clienteId, dominio: novoDominio.trim() });
     if (error) setErro(error.message);
     else {
       setNovoDominio("");
@@ -267,7 +270,7 @@ else if (slData) {
   };
 
   const salvarDominio = async (dominioId: string, valor: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
     const { error } = await getClient()
       .from(tabela)
       .update({ dominio: valor.trim() })
@@ -277,7 +280,7 @@ else if (slData) {
   };
 
   const removerDominio = async (dominioId: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
     const { error } = await getClient().from(tabela).delete().eq("id", dominioId);
     if (error) setErro(error.message);
     else if (clienteId) carregarDominios(clienteId);
@@ -285,8 +288,8 @@ else if (slData) {
 
   const excluirCliente = async () => {
     if (!clienteId || !confirm("Excluir este cliente e seus dados vinculados?")) return;
-    await getClient().from("dominios_meupedix").delete().eq("cliente_id", clienteId);
-    await getClient().from("dominios_silun").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios").delete().eq("cliente_id", clienteId);
+    await getClient().from("dominios_silun").delete().eq("cliente_silun_id", clienteId);
     await getClient().from("clientes_meupedix").delete().eq("cliente_id", clienteId);
     await getClient().from("clientes_silun").delete().eq("cliente_id", clienteId);
     const { error } = await getClient().from("clientes").delete().eq("id", clienteId);
