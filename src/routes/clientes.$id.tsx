@@ -47,6 +47,7 @@ const vazio: Partial<Cliente> = {
   status_pagamento: "em_dia",
   observacoes: "",
   ativo: true,
+  dominio: "",
 };
 
 const meupedixVazio: Partial<ClienteMeuPedix> = {
@@ -58,6 +59,9 @@ const meupedixVazio: Partial<ClienteMeuPedix> = {
 const silunVazio: Partial<ClienteSilun> = {
   empresa_id: "",
   modulos_contratados: [],
+  email_login_supabase: "",
+  supabase_url: "",
+  supabase_anon_key: "",
 };
 
 function EditarCliente() {
@@ -147,7 +151,16 @@ function EditarCliente() {
               .eq("cliente_id", id)
               .maybeSingle();
             if (slErr) setErro(slErr.message);
-            else if (slData) setSilun(slData as ClienteSilun);
+else if (slData) {
+              setSilun(slData as ClienteSilun);
+            } else {
+              setSilun({
+                ...silunVazio,
+                email_login_supabase: rawCli.email_login_supabase ?? "",
+                supabase_url: rawCli.supabase_url ?? "",
+                supabase_anon_key: rawCli.supabase_anon_key ?? "",
+              });
+            }
           }
         }
       });
@@ -178,6 +191,7 @@ function EditarCliente() {
       status_pagamento: cliente.status_pagamento ?? null,
       observacoes: cliente.observacoes || null,
       ativo: cliente.ativo ?? true,
+      dominio: cliente.dominio || null,
     };
 
     let cid = clienteId;
@@ -218,6 +232,9 @@ function EditarCliente() {
         cliente_id: cid,
         empresa_id: silun.empresa_id || null,
         modulos_contratados: silun.modulos_contratados || [],
+        email_login_supabase: silun.email_login_supabase || null,
+        supabase_url: silun.supabase_url || null,
+        supabase_anon_key: silun.supabase_anon_key || null,
       };
       const { error: slErr } = await getClient()
         .from("clientes_silun")
@@ -326,35 +343,59 @@ function EditarCliente() {
           <Input id="emailc" type="email" value={cliente.email_contato ?? ""} onChange={(e) => campo("email_contato", e.target.value)} />
         </div>
 
-        {cliente.produto === "MeuPedix" && (
-          <>
-            <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="emails">E-mail do login do Supabase</Label>
-              <Input
-                id="emails"
-                type="email"
-                value={meupedix.email_login_supabase ?? ""}
-                onChange={(e) => setMeuPedix((prev) => ({ ...prev, email_login_supabase: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="surl">Supabase URL</Label>
-              <Input
-                id="surl"
-                value={meupedix.supabase_url ?? ""}
-                onChange={(e) => setMeuPedix((prev) => ({ ...prev, supabase_url: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="skey">Supabase anon key</Label>
-              <Input
-                id="skey"
-                value={meupedix.supabase_anon_key ?? ""}
-                onChange={(e) => setMeuPedix((prev) => ({ ...prev, supabase_anon_key: e.target.value }))}
-              />
-            </div>
-          </>
-        )}
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="emails">E-mail do login do Supabase</Label>
+          <Input
+            id="emails"
+            type="email"
+            value={cliente.produto === "MeuPedix" ? meupedix.email_login_supabase ?? "" : silun.email_login_supabase ?? ""}
+            onChange={(e) => {
+              if (cliente.produto === "MeuPedix") {
+                setMeuPedix((prev) => ({ ...prev, email_login_supabase: e.target.value }));
+              } else {
+                setSilun((prev) => ({ ...prev, email_login_supabase: e.target.value }));
+              }
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="surl">Supabase URL</Label>
+          <Input
+            id="surl"
+            value={cliente.produto === "MeuPedix" ? meupedix.supabase_url ?? "" : silun.supabase_url ?? ""}
+            onChange={(e) => {
+              if (cliente.produto === "MeuPedix") {
+                setMeuPedix((prev) => ({ ...prev, supabase_url: e.target.value }));
+              } else {
+                setSilun((prev) => ({ ...prev, supabase_url: e.target.value }));
+              }
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="skey">Supabase anon key</Label>
+          <Input
+            id="skey"
+            value={cliente.produto === "MeuPedix" ? meupedix.supabase_anon_key ?? "" : silun.supabase_anon_key ?? ""}
+            onChange={(e) => {
+              if (cliente.produto === "MeuPedix") {
+                setMeuPedix((prev) => ({ ...prev, supabase_anon_key: e.target.value }));
+              } else {
+                setSilun((prev) => ({ ...prev, supabase_anon_key: e.target.value }));
+              }
+            }}
+          />
+        </div>
+
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="dominio_principal">Domínio</Label>
+          <Input
+            id="dominio_principal"
+            placeholder="cliente.exemplo.com.br"
+            value={cliente.dominio ?? ""}
+            onChange={(e) => campo("dominio", e.target.value)}
+          />
+        </div>
 
         {cliente.produto === "Silun" && (
           <>
