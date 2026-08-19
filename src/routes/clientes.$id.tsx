@@ -101,11 +101,12 @@ function EditarCliente() {
 
   const carregarDominios = async (cid: string, prodOverride?: ProdutoTipo) => {
     const prod = prodOverride || cliente.produto;
-    const tabela = prod === "Silun" ? "dominios_silun" : "dominios_meupedix";
+    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
+    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
     const { data, error } = await getClient()
       .from(tabela)
       .select("*")
-      .eq("cliente_id", cid)
+      .eq(fk, cid)
       .order("created_at", { ascending: true });
     if (error) setErro(error.message);
     else setDominios((data ?? []) as Dominio[]);
