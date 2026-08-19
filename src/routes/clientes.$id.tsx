@@ -99,8 +99,9 @@ function EditarCliente() {
     return lista;
   }, [dominios, filtroDominio, ordemDominios]);
 
-  const carregarDominios = async (cid: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios_meupedix";
+  const carregarDominios = async (cid: string, prodOverride?: ProdutoTipo) => {
+    const prod = prodOverride || cliente.produto;
+    const tabela = prod === "Silun" ? "dominios_silun" : "dominios_meupedix";
     const { data, error } = await getClient()
       .from(tabela)
       .select("*")
@@ -148,7 +149,7 @@ function EditarCliente() {
                 supabase_anon_key: rawCli.supabase_anon_key ?? "",
               });
             }
-            carregarDominios(id);
+            carregarDominios(id, "MeuPedix");
           } else if (produtoFinal === "Silun") {
             const { data: slData, error: slErr } = await getClient()
               .from("clientes_silun")
@@ -166,6 +167,7 @@ else if (slData) {
                 supabase_anon_key: rawCli.supabase_anon_key ?? "",
               });
             }
+            carregarDominios(id, "Silun");
           }
         }
       });
