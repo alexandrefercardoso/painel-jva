@@ -4,8 +4,6 @@ import { PainelLayout } from "@/components/PainelLayout";
 import {
   getClient,
   type Cliente,
-  type ClienteMeuPedix,
-  type ClienteSilun,
   type Dominio,
   type ProdutoTipo,
   OPCOES_MODULOS_SILUN,
@@ -47,21 +45,12 @@ const vazio: Partial<Cliente> = {
   status_pagamento: "em_dia",
   observacoes: "",
   ativo: true,
-  // Removido: dominio: "",
-};
-
-const meupedixVazio: Partial<ClienteMeuPedix> = {
   email_login_supabase: "",
   supabase_url: "",
   supabase_anon_key: "",
-};
-
-const silunVazio: Partial<ClienteSilun> = {
   empresa_id: "",
   modulos_contratados: [],
-  supabase_login_email: "",
-  supabase_url: "",
-  supabase_anon_key: "",
+  modo: "compartilhado",
 };
 
 function EditarCliente() {
@@ -70,8 +59,6 @@ function EditarCliente() {
   const novo = id === "novo";
 
   const [cliente, setCliente] = useState<Partial<Cliente>>(vazio);
-  const [meupedix, setMeuPedix] = useState<Partial<ClienteMeuPedix>>(meupedixVazio);
-  const [silun, setSilun] = useState<Partial<ClienteSilun>>(silunVazio);
   const [clienteId, setClienteId] = useState<string | null>(novo ? null : id);
   const [dominios, setDominios] = useState<Dominio[]>([]);
   const [novoDominio, setNovoDominio] = useState("");
@@ -99,14 +86,11 @@ function EditarCliente() {
     return lista;
   }, [dominios, filtroDominio, ordemDominios]);
 
-  const carregarDominios = async (cid: string, prodOverride?: ProdutoTipo) => {
-    const prod = prodOverride || cliente.produto;
-    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
-    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
+  const carregarDominios = async (cid: string) => {
     const { data, error } = await getClient()
-      .from(tabela)
+      .from("dominios")
       .select("*")
-      .eq(fk, cid)
+      .eq("cliente_id", cid)
       .order("created_at", { ascending: true });
     if (error) setErro(error.message);
     else setDominios((data ?? []) as Dominio[]);
@@ -122,54 +106,13 @@ function EditarCliente() {
       .then(async ({ data, error }) => {
         if (error) setErro(error.message);
         else if (data) {
-          const rawCli = data as Cliente & {
-            email_login_supabase?: string | null;
-            supabase_url?: string | null;
-            supabase_anon_key?: string | null;
-          };
+          const rawCli = data as Cliente;
           const produtoFinal: ProdutoTipo =
             rawCli.produto && rawCli.produto.toString().toLowerCase() === "silun"
               ? "Silun"
               : "MeuPedix";
-          const cli: Cliente = { ...rawCli, produto: produtoFinal };
-          setCliente(cli);
-
-          if (produtoFinal === "MeuPedix") {
-            const { data: mpData, error: mpErr } = await getClient()
-              .from("clientes_meupedix")
-              .select("*")
-              .eq("cliente_id", id)
-              .maybeSingle();
-            if (mpErr) setErro(mpErr.message);
-            else if (mpData) {
-              setMeuPedix(mpData as ClienteMeuPedix);
-            } else {
-              setMeuPedix({
-                email_login_supabase: rawCli.email_login_supabase ?? "",
-                supabase_url: rawCli.supabase_url ?? "",
-                supabase_anon_key: rawCli.supabase_anon_key ?? "",
-              });
-            }
-            carregarDominios(id, "MeuPedix");
-          } else if (produtoFinal === "Silun") {
-            const { data: slData, error: slErr } = await getClient()
-              .from("clientes_silun")
-              .select("*")
-              .eq("cliente_id", id)
-              .maybeSingle();
-            if (slErr) setErro(slErr.message);
-else if (slData) {
-              setSilun(slData as ClienteSilun);
-            } else {
-              setSilun({
-                ...silunVazio,
-                supabase_login_email: rawCli.email_login_supabase ?? "",
-                supabase_url: rawCli.supabase_url ?? "",
-                supabase_anon_key: rawCli.supabase_anon_key ?? "",
-              });
-            }
-            carregarDominios(id, "Silun");
-          }
+          setCliente({ ...rawCli, produto: produtoFinal });
+          await carregarDominios(String(id));
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,7 +142,12 @@ else if (slData) {
       status_pagamento: cliente.status_pagamento ?? null,
       observacoes: cliente.observacoes || null,
       ativo: cliente.ativo ?? true,
-      // Removido: dominio: cliente.dominio || null,
+      email_login_supabase: cliente.email_login_supabase || null,
+      supabase_url: cliente.supabase_url || null,
+      supabase_anon_key: cliente.supabase_anon_key || null,
+      empresa_id: cliente.empresa_id || null,
+      modulos_contratados: cliente.modulos_contratados || [],
+      modo: cliente.modo || "compartilhado",
     };
 
     let cid = clienteId;
@@ -223,45 +171,15 @@ else if (slData) {
       setCliente(criado);
     }
 
-    if (cliente.produto === "MeuPedix") {
-      const payloadMp = {
-        cliente_id: cid,
-        email_login_supabase: meupedix.email_login_supabase || null,
-        supabase_url: meupedix.supabase_url || null,
-        supabase_anon_key: meupedix.supabase_anon_key || null,
-      };
-      const { error: mpErr } = await getClient()
-        .from("clientes_meupedix")
-        .upsert(payloadMp, { onConflict: "cliente_id" });
-      if (mpErr) setErro(mpErr.message);
-      else setMsg("Alterações salvas.");
-    } else if (cliente.produto === "Silun") {
-      const payloadSl = {
-        cliente_id: cid,
-        empresa_id: silun.empresa_id || null,
-        modulos_contratados: silun.modulos_contratados || [],
-        supabase_login_email: silun.supabase_login_email || null,
-        supabase_url: silun.supabase_url || null,
-        supabase_anon_key: silun.supabase_anon_key || null,
-      };
-      const { error: slErr } = await getClient()
-        .from("clientes_silun")
-        .upsert(payloadSl, { onConflict: "cliente_id" });
-      if (slErr) setErro(slErr.message);
-      else setMsg("Alterações salvas.");
-    }
-
+    setMsg("Alterações salvas.");
     setSalvando(false);
   };
 
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
-    const prod = cliente.produto;
-    const tabela = prod === "Silun" ? "dominios_silun" : "dominios";
-    const fk = prod === "Silun" ? "cliente_silun_id" : "cliente_id";
     const { error } = await getClient()
-      .from(tabela)
-      .insert({ [fk]: clienteId, dominio: novoDominio.trim() });
+      .from("dominios")
+      .insert({ cliente_id: clienteId, dominio: novoDominio.trim(), modulo: cliente.produto?.toLowerCase() ?? "meupedix" });
     if (error) setErro(error.message);
     else {
       setNovoDominio("");
@@ -270,9 +188,8 @@ else if (slData) {
   };
 
   const salvarDominio = async (dominioId: string, valor: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
     const { error } = await getClient()
-      .from(tabela)
+      .from("dominios")
       .update({ dominio: valor.trim() })
       .eq("id", dominioId);
     if (error) setErro(error.message);
@@ -280,8 +197,7 @@ else if (slData) {
   };
 
   const removerDominio = async (dominioId: string) => {
-    const tabela = cliente.produto === "Silun" ? "dominios_silun" : "dominios";
-    const { error } = await getClient().from(tabela).delete().eq("id", dominioId);
+    const { error } = await getClient().from("dominios").delete().eq("id", dominioId);
     if (error) setErro(error.message);
     else if (clienteId) carregarDominios(clienteId);
   };
@@ -289,9 +205,6 @@ else if (slData) {
   const excluirCliente = async () => {
     if (!clienteId || !confirm("Excluir este cliente e seus dados vinculados?")) return;
     await getClient().from("dominios").delete().eq("cliente_id", clienteId);
-    await getClient().from("dominios_silun").delete().eq("cliente_silun_id", clienteId);
-    await getClient().from("clientes_meupedix").delete().eq("cliente_id", clienteId);
-    await getClient().from("clientes_silun").delete().eq("cliente_id", clienteId);
     const { error } = await getClient().from("clientes").delete().eq("id", clienteId);
     if (error) setErro(error.message);
     else navigate({ to: "/" });
@@ -362,83 +275,72 @@ else if (slData) {
           <Input
             id="emails"
             type="email"
-            value={cliente.produto === "MeuPedix" ? meupedix.email_login_supabase ?? "" : silun.supabase_login_email ?? ""}
-            onChange={(e) => {
-              if (cliente.produto === "MeuPedix") {
-                setMeuPedix((prev) => ({ ...prev, email_login_supabase: e.target.value }));
-              } else {
-                setSilun((prev) => ({ ...prev, supabase_login_email: e.target.value }));
-              }
-            }}
+            value={cliente.email_login_supabase ?? ""}
+            onChange={(e) => campo("email_login_supabase", e.target.value)}
           />
         </div>
         <div className="space-y-1">
           <Label htmlFor="surl">Supabase URL</Label>
           <Input
             id="surl"
-            value={cliente.produto === "MeuPedix" ? meupedix.supabase_url ?? "" : silun.supabase_url ?? ""}
-            onChange={(e) => {
-              if (cliente.produto === "MeuPedix") {
-                setMeuPedix((prev) => ({ ...prev, supabase_url: e.target.value }));
-              } else {
-                setSilun((prev) => ({ ...prev, supabase_url: e.target.value }));
-              }
-            }}
+            value={cliente.supabase_url ?? ""}
+            onChange={(e) => campo("supabase_url", e.target.value)}
           />
         </div>
         <div className="space-y-1">
           <Label htmlFor="skey">Supabase anon key</Label>
           <Input
             id="skey"
-            value={cliente.produto === "MeuPedix" ? meupedix.supabase_anon_key ?? "" : silun.supabase_anon_key ?? ""}
-            onChange={(e) => {
-              if (cliente.produto === "MeuPedix") {
-                setMeuPedix((prev) => ({ ...prev, supabase_anon_key: e.target.value }));
-              } else {
-                setSilun((prev) => ({ ...prev, supabase_anon_key: e.target.value }));
-              }
-            }}
+            value={cliente.supabase_anon_key ?? ""}
+            onChange={(e) => campo("supabase_anon_key", e.target.value)}
           />
         </div>
 
-        {/* Removido campo de domínio único do formulário de cliente */}
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="empresa_id">ID da empresa (Silun)</Label>
+          <Input
+            id="empresa_id"
+            placeholder="ex: 123e4567-e89b-12d3-a456-426614174000"
+            value={cliente.empresa_id ?? ""}
+            onChange={(e) => campo("empresa_id", e.target.value)}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Módulos contratados</Label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-1">
+            {OPCOES_MODULOS_SILUN.map((modulo) => {
+              const modulos = cliente.modulos_contratados || [];
+              const checked = modulos.includes(modulo);
+              return (
+                <label key={modulo} className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(isOptionsChecked) => {
+                      const updated = isOptionsChecked
+                        ? [...modulos, modulo]
+                        : modulos.filter((m) => m !== modulo);
+                      setCliente((prev) => ({ ...prev, modulos_contratados: updated }));
+                    }}
+                  />
+                  <span>{modulo}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
-        {cliente.produto === "Silun" && (
-          <>
-            <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="empresa_id">ID da empresa (Silun)</Label>
-              <Input
-                id="empresa_id"
-                placeholder="ex: 123e4567-e89b-12d3-a456-426614174000"
-                value={silun.empresa_id ?? ""}
-                onChange={(e) => setSilun((prev) => ({ ...prev, empresa_id: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Módulos contratados</Label>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-1">
-                {OPCOES_MODULOS_SILUN.map((modulo) => {
-                  const modulos = silun.modulos_contratados || [];
-                  const checked = modulos.includes(modulo);
-                  return (
-                    <label key={modulo} className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(isOptionsChecked) => {
-                          const updated = isOptionsChecked
-                            ? [...modulos, modulo]
-                            : modulos.filter((m) => m !== modulo);
-                          setSilun((prev) => ({ ...prev, modulos_contratados: updated }));
-                        }}
-                      />
-                      <span>{modulo}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
+        <div className="space-y-1">
+          <Label htmlFor="modo">Modo de conexão</Label>
+          <select
+            id="modo"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={cliente.modo ?? "compartilhado"}
+            onChange={(e) => campo("modo", e.target.value)}
+          >
+            <option value="compartilhado">Compartilhado</option>
+            <option value="proprio">Próprio</option>
+          </select>
+        </div>
 
         <div className="space-y-1">
           <Label htmlFor="valor">Valor mensal</Label>

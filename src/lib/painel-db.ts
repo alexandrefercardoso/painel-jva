@@ -74,24 +74,13 @@ export type Cliente = {
   observacoes: string | null;
   ativo: boolean | null;
   produto: ProdutoTipo | null;
-};
-
-export type ClienteMeuPedix = {
-  id?: string;
-  cliente_id: string;
+  // Campos consolidados das antigas clientes_meupedix / clientes_silun
   email_login_supabase: string | null;
   supabase_url: string | null;
   supabase_anon_key: string | null;
-};
-
-export type ClienteSilun = {
-  id?: string;
-  cliente_id: string;
   empresa_id: string | null;
   modulos_contratados: string[] | null;
-  supabase_login_email: string | null;
-  supabase_url: string | null;
-  supabase_anon_key: string | null;
+  modo: string | null;
 };
 
 export const OPCOES_MODULOS_SILUN = [
@@ -108,5 +97,6 @@ export type Dominio = {
   cliente_id: string;
   dominio: string;
   created_at?: string;
+  modulo?: string | null;
 };
 
