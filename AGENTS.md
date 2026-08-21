@@ -9,14 +9,18 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-## Regras Fixas de Arquitetura (NÃO ALTERAR NO LOVABLE)
+## Regras Fixas de Arquitetura (ATUALIZADO)
 
 1. **Configuração Supabase (`src/lib/painel-db.ts`)**:
    - As constantes `DEFAULT_URL` (`https://hepvdpktubhcklerdvqb.supabase.co`) e `DEFAULT_ANON_KEY` são fixas e representam o banco central da JVA Sistemas. Não alterar nem remover essas credenciais.
 
-2. **Estrutura Multi-Produto (`clientes`, `clientes_meupedix`, `clientes_silun`)**:
-   - O campo `produto` na tabela `clientes` aceita em minúsculas `'meupedix'` ou `'silun'` (devido à restrição `clientes_produto_check`).
-   - Dados do Supabase do cliente MeuPedix devem ser salvos na tabela `clientes_meupedix` usando `upsert` com `onConflict: 'cliente_id'`.
-   - Dados de módulos e ID de empresa do cliente Silun devem ser salvos na tabela `clientes_silun` usando `upsert` com `onConflict: 'cliente_id'`.
-   - A seção de **Domínios** deve aparecer **exclusivamente** quando `produto === 'MeuPedix'`.
+2. **Estrutura de Dados Consolidada (3 tabelas)**:
+   - **`clientes`**: Tabela única com todos os dados (base + configuração produto + MeuPedix + Silun/empresa + modulos_contratados array).
+   - **`modulos`**: Catálogo universal de apps (slug, nome, url_base, etc).
+   - **`dominios`**: Tabela de endereços (dominio, cliente_id, modulo_associado).
+
+3. **Fluxo de Módulos**:
+   - Apps são separados e consultam URLs do Supabase (global para Silun, cliente p/ MeuPedix).
+   - O campo `modulos_contratados` (array de slugs) no cliente define o que está liberado.
+   - O campo `dominios.modulo` (slug) associa o domínio ao app específico.
 

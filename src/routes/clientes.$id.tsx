@@ -5,8 +5,10 @@ import {
   getClient,
   type Cliente,
   type Dominio,
+  type Modulo,
+  type ModoTipo,
   type ProdutoTipo,
-  OPCOES_MODULOS_SILUN,
+  OPCOES_MODO,
 } from "@/lib/painel-db";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,7 @@ const vazio: Partial<Cliente> = {
   status_pagamento: "em_dia",
   observacoes: "",
   ativo: true,
+<<<<<<< HEAD
   email_login_supabase: "",
   supabase_url: "",
   supabase_anon_key: "",
@@ -52,6 +55,26 @@ const vazio: Partial<Cliente> = {
   modulos_contratados: [],
   modo: "compartilhado",
 };
+=======
+  empresa_id: "",
+  email_login_supabase: "",
+  supabase_url: "",
+  supabase_anon_key: "",
+  modulos_contratados: [],
+  modo: "compartilhado",
+};
+
+const SLUGS_MODULOS_PADRAO = [
+  "nucleo",
+  "pdv",
+  "erp",
+  "fiscal",
+  "cereais",
+  "rural",
+  "transportadora",
+  "defensivo",
+] as const;
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
 
 function EditarCliente() {
   const { id } = Route.useParams();
@@ -61,6 +84,8 @@ function EditarCliente() {
   const [cliente, setCliente] = useState<Partial<Cliente>>(vazio);
   const [clienteId, setClienteId] = useState<string | null>(novo ? null : id);
   const [dominios, setDominios] = useState<Dominio[]>([]);
+  const [modulos, setModulos] = useState<Modulo[]>([]);
+  const [definicaoModulos, setDefinicaoModulos] = useState<string | null>(null);
   const [novoDominio, setNovoDominio] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -96,7 +121,22 @@ function EditarCliente() {
     else setDominios((data ?? []) as Dominio[]);
   };
 
+  const carregarModulos = async () => {
+    const { data, error } = await getClient().from("modulos").select("*").order("nome", { ascending: true });
+    if (error) {
+      setDefinicaoModulos(null);
+      return;
+    }
+    if (data && data.length > 0) {
+      setModulos(data as Modulo[]);
+      setDefinicaoModulos("modulos");
+    } else {
+      setDefinicaoModulos("constante");
+    }
+  };
+
   useEffect(() => {
+    carregarModulos();
     if (novo) return;
     getClient()
       .from("clientes")
@@ -112,13 +152,45 @@ function EditarCliente() {
               ? "Silun"
               : "MeuPedix";
           setCliente({ ...rawCli, produto: produtoFinal });
+<<<<<<< HEAD
           await carregarDominios(String(id));
+=======
+          carregarDominios(id);
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const opcoesModulos = useMemo(() => {
+    const slug: string[] = [];
+    const tempo: Modulo[] = [];
+    for (const m of modulos) {
+      if (m.slug && m.slug.trim()) {
+        slug.push(m.slug.trim().toLowerCase());
+        tempo.push(m);
+      }
+    }
+    if (definicaoModulos !== "modulos") {
+      for (const s of SLUGS_MODULOS_PADRAO) {
+        if (!slug.includes(s)) {
+          slug.push(s);
+          tempo.push({ id: s, slug: s, nome: s, descricao: null, cor_icone: null, arquivo_svg: null });
+        }
+      }
+    }
+    return { slug, tempo };
+  }, [modulos, definicaoModulos]);
+
   const campo = <K extends keyof Cliente>(key: K, value: Cliente[K]) => setCliente((c) => ({ ...c, [key]: value }));
+
+  const toggleModulo = (slug: string) => {
+    setCliente((c) => {
+      const atual = c.modulos_contratados || [];
+      const updated = atual.includes(slug) ? atual.filter((s) => s !== slug) : [...atual, slug];
+      return { ...c, modulos_contratados: updated };
+    });
+  };
 
   const salvar = async () => {
     setSalvando(true);
@@ -142,17 +214,25 @@ function EditarCliente() {
       status_pagamento: cliente.status_pagamento ?? null,
       observacoes: cliente.observacoes || null,
       ativo: cliente.ativo ?? true,
+<<<<<<< HEAD
       email_login_supabase: cliente.email_login_supabase || null,
       supabase_url: cliente.supabase_url || null,
       supabase_anon_key: cliente.supabase_anon_key || null,
       empresa_id: cliente.empresa_id || null,
       modulos_contratados: cliente.modulos_contratados || [],
       modo: cliente.modo || "compartilhado",
+=======
+      empresa_id: cliente.empresa_id || null,
+      email_login_supabase: cliente.email_login_supabase || null,
+      supabase_url: cliente.supabase_url || null,
+      supabase_anon_key: cliente.supabase_anon_key || null,
+      modulos_contratados: cliente.modulos_contratados || [],
+      modo: cliente.modo ?? "compartilhado",
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
     };
 
-    let cid = clienteId;
-    if (cid) {
-      const { error } = await getClient().from("clientes").update(payloadCore).eq("id", cid);
+    if (clienteId) {
+      const { error } = await getClient().from("clientes").update(payloadCore).eq("id", clienteId);
       if (error) {
         setErro(error.message);
         setSalvando(false);
@@ -166,8 +246,8 @@ function EditarCliente() {
         return;
       }
       const criado = data as Cliente;
-      cid = String(criado.id);
-      setClienteId(cid);
+      const novoId = String(criado.id);
+      setClienteId(novoId);
       setCliente(criado);
     }
 
@@ -187,10 +267,14 @@ function EditarCliente() {
     }
   };
 
-  const salvarDominio = async (dominioId: string, valor: string) => {
+  const salvarDominio = async (dominioId: string, valor: string, modulo: string | null) => {
     const { error } = await getClient()
       .from("dominios")
+<<<<<<< HEAD
       .update({ dominio: valor.trim() })
+=======
+      .update({ dominio: valor.trim() || null, modulo: modulo || null })
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
       .eq("id", dominioId);
     if (error) setErro(error.message);
     else setMsg("Domínio atualizado.");
@@ -271,6 +355,7 @@ function EditarCliente() {
         </div>
 
         <div className="space-y-1 sm:col-span-2">
+<<<<<<< HEAD
           <Label htmlFor="emails">E-mail do login do Supabase</Label>
           <Input
             id="emails"
@@ -297,6 +382,46 @@ function EditarCliente() {
         </div>
 
         <div className="space-y-1 sm:col-span-2">
+=======
+          <Label htmlFor="modo">Modo</Label>
+          <select
+            id="modo"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={cliente.modo ?? "compartilhado"}
+            onChange={(e) => campo("modo", e.target.value as ModoTipo)}
+          >
+            {OPCOES_MODO.map((m) => (
+              <option key={m} value={m}>
+                {m === "compartilhado" ? "Compartilhado" : "Individual"}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="emails">E-mail do login do Supabase</Label>
+          <Input
+            id="emails"
+            type="email"
+            value={cliente.email_login_supabase ?? ""}
+            onChange={(e) => campo("email_login_supabase", e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="surl">Supabase URL</Label>
+          <Input id="surl" value={cliente.supabase_url ?? ""} onChange={(e) => campo("supabase_url", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="skey">Supabase anon key</Label>
+          <Input
+            id="skey"
+            value={cliente.supabase_anon_key ?? ""}
+            onChange={(e) => campo("supabase_anon_key", e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1 sm:col-span-2">
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
           <Label htmlFor="empresa_id">ID da empresa (Silun)</Label>
           <Input
             id="empresa_id"
@@ -305,6 +430,7 @@ function EditarCliente() {
             onChange={(e) => campo("empresa_id", e.target.value)}
           />
         </div>
+<<<<<<< HEAD
         <div className="space-y-2 sm:col-span-2">
           <Label>Módulos contratados</Label>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-1">
@@ -323,11 +449,25 @@ function EditarCliente() {
                     }}
                   />
                   <span>{modulo}</span>
+=======
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Módulos contratados</Label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-1">
+            {opcoesModulos.tempo.map((modulo) => {
+              const modulos = cliente.modulos_contratados || [];
+              const checked = modulos.includes(modulo.slug);
+              return (
+                <label key={modulo.slug} className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <Checkbox checked={checked} onCheckedChange={() => toggleModulo(modulo.slug)} />
+                  <span>{modulo.nome}</span>
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
                 </label>
               );
             })}
           </div>
         </div>
+<<<<<<< HEAD
 
         <div className="space-y-1">
           <Label htmlFor="modo">Modo de conexão</Label>
@@ -341,6 +481,8 @@ function EditarCliente() {
             <option value="proprio">Próprio</option>
           </select>
         </div>
+=======
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
 
         <div className="space-y-1">
           <Label htmlFor="valor">Valor mensal</Label>
@@ -382,6 +524,7 @@ function EditarCliente() {
         </div>
       </section>
 
+<<<<<<< HEAD
       {clienteId && (
         <section className="space-y-3 rounded-lg border bg-card p-4">
           <h2 className="font-medium text-foreground">Domínios</h2>
@@ -444,6 +587,104 @@ function EditarCliente() {
           </ul>
         </section>
       )}
+=======
+      <section className="space-y-3 rounded-lg border bg-card p-4">
+        <h2 className="font-medium text-foreground">Domínios</h2>
+        {!clienteId && <p className="text-sm text-muted-foreground">Salve o cliente para adicionar domínios.</p>}
+        {clienteId && (
+          <>
+            <div className="flex gap-2">
+              <Input placeholder="exemplo.com.br" value={novoDominio} onChange={(e) => setNovoDominio(e.target.value)} />
+              <Button variant="secondary" onClick={adicionarDominio}>
+                Adicionar
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                aria-label="Filtrar domínios"
+                placeholder="Filtrar domínios..."
+                value={filtroDominio}
+                onChange={(e) => setFiltroDominio(e.target.value)}
+                className="max-w-xs"
+              />
+              <select
+                aria-label="Ordenar domínios"
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={ordemDominios}
+                onChange={(e) => setOrdemDominios(e.target.value as "original" | "asc" | "desc")}
+              >
+                <option value="original">Ordem original</option>
+                <option value="asc">A → Z</option>
+                <option value="desc">Z → A</option>
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label="Alternar ordenação por domínio"
+                onClick={() => setOrdemDominios((prev) => (prev === "desc" ? "asc" : "desc"))}
+              >
+                {ordemDominios !== "desc" ? "Domínio ↑" : "Domínio ↓"}
+              </Button>
+            </div>
+            <ul className="divide-y rounded-md border">
+              {dominiosVisiveis.map((d) => {
+                const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
+                return (
+                  <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                    <div className="flex min-w-[280px] flex-1 items-center gap-2">
+                      <Input
+                        value={d.dominio ?? ""}
+                        onChange={(e) =>
+                          setDominios((lista) =>
+                            lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
+                          )
+                        }
+                        onBlur={(e) => salvarDominio(String(d.id), e.target.value, d.modulo)}
+                      />
+                      <select
+                        aria-label="Módulo do domínio"
+                        className="h-9 w-40 shrink-0 rounded-md border border-input bg-background px-3 text-sm"
+                        value={d.modulo ?? ""}
+                        onChange={(e) => {
+                          const valor = e.target.value || null;
+                          setDominios((lista) =>
+                            lista.map((x) => (x.id === d.id ? { ...x, modulo: valor } : x)),
+                          );
+                          salvarDominio(String(d.id), d.dominio ?? "", valor);
+                        }}
+                      >
+                        <option value="">— sem módulo —</option>
+                        {opcoesModulos.slug.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "", d.modulo)}>
+                      Salvar
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={urlDominio} target="_blank" rel="noopener noreferrer">
+                        Abrir
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
+                      Remover
+                    </Button>
+                  </li>
+                );
+              })}
+              {dominios.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio vinculado.</li>}
+              {dominios.length > 0 && dominiosVisiveis.length === 0 && (
+                <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum domínio encontrado.</li>
+              )}
+            </ul>
+          </>
+        )}
+      </section>
+>>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
 
       {clienteId && (
         <Button variant="destructive" onClick={excluirCliente}>
