@@ -76,22 +76,12 @@ export type Cliente = {
   observacoes: string | null;
   ativo: boolean | null;
   produto: ProdutoTipo | null;
-<<<<<<< HEAD
-  // Campos consolidados das antigas clientes_meupedix / clientes_silun
-  email_login_supabase: string | null;
-  supabase_url: string | null;
-  supabase_anon_key: string | null;
-  empresa_id: string | null;
-  modulos_contratados: string[] | null;
-  modo: string | null;
-=======
   empresa_id: string | null;
   email_login_supabase: string | null;
   supabase_url: string | null;
   supabase_anon_key: string | null;
   modulos_contratados: string[] | null;
   modo: ModoTipo | null;
->>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
 };
 
 export type Modulo = {
@@ -108,14 +98,7 @@ export const OPCOES_MODO: ModoTipo[] = ["compartilhado", "individual"];
 export type Dominio = {
   id: string;
   cliente_id: string;
-<<<<<<< HEAD
-  dominio: string;
-  created_at?: string;
-  modulo?: string | null;
-=======
   dominio: string | null;
   modulo: string | null;
   created_at?: string;
->>>>>>> 5537672 (feat: consolidar modelo de dados em 3 tabelas (clientes, modulos, dominios))
 };
-
