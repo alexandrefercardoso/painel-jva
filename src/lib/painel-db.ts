@@ -100,5 +100,6 @@ export type Dominio = {
   cliente_id: string;
   dominio: string | null;
   modulo: string | null;
+  is_primary: boolean | null;
   created_at?: string;
 };
