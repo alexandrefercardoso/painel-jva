@@ -508,7 +508,7 @@ function EditarCliente() {
                         }}
                       >
                         <option value="">— sem módulo —</option>
-                        {opcoesModulos.slug.map((s) => (
+                        {opcoesModulos.slugs.map((s: string) => (
                           <option key={s} value={s}>
                             {s}
                           </option>
