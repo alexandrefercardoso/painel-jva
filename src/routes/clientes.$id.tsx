@@ -244,10 +244,10 @@ function EditarCliente() {
     }
   };
 
-  const salvarDominio = async (dominioId: string, valor: string, modulo: string | null) => {
+  const salvarDominio = async (dominioId: string, valor: string, modulo: string | null, isPrimary: boolean) => {
     const { error } = await getClient()
       .from("dominios")
-      .update({ dominio: valor.trim() || null, modulo: modulo || null })
+      .update({ dominio: valor.trim() || null, modulo: modulo || null, is_primary: isPrimary })
       .eq("id", dominioId);
     if (error) setErro(error.message);
     else setMsg("Domínio atualizado.");
@@ -476,6 +476,16 @@ function EditarCliente() {
                 return (
                   <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                     <div className="flex min-w-[280px] flex-1 items-center gap-2">
+                      <Checkbox
+                        checked={d.is_primary ?? false}
+                        onCheckedChange={(checked) => {
+                          const val = !!checked;
+                          setDominios((lista) =>
+                            lista.map((x) => (x.id === d.id ? { ...x, is_primary: val } : x)),
+                          );
+                          salvarDominio(String(d.id), d.dominio ?? "", d.modulo, val);
+                        }}
+                      />
                       <Input
                         value={d.dominio ?? ""}
                         onChange={(e) =>
@@ -483,7 +493,7 @@ function EditarCliente() {
                             lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
                           )
                         }
-                        onBlur={(e) => salvarDominio(String(d.id), e.target.value, d.modulo)}
+                        onBlur={(e) => salvarDominio(String(d.id), e.target.value, d.modulo, d.is_primary ?? false)}
                       />
                       <select
                         aria-label="Módulo do domínio"
@@ -494,18 +504,18 @@ function EditarCliente() {
                           setDominios((lista) =>
                             lista.map((x) => (x.id === d.id ? { ...x, modulo: valor } : x)),
                           );
-                          salvarDominio(String(d.id), d.dominio ?? "", valor);
+                          salvarDominio(String(d.id), d.dominio ?? "", valor, d.is_primary ?? false);
                         }}
                       >
                         <option value="">— sem módulo —</option>
-                        {opcoesModulos.slugs.map((s) => (
+                        {opcoesModulos.slug.map((s) => (
                           <option key={s} value={s}>
                             {s}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "", d.modulo)}>
+                    <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "", d.modulo, d.is_primary ?? false)}>
                       Salvar
                     </Button>
                     <Button variant="ghost" size="sm" asChild>
