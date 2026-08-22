@@ -86,7 +86,7 @@ function EditarCliente() {
 
   const dominiosVisiveis = useMemo(() => {
     const termo = filtroDominio.trim().toLowerCase();
-    let lista = dominios;
+    let lista = Array.isArray(dominios) ? dominios : [];
     if (termo) {
       lista = lista.filter((d) => (d.dominio ?? "").toLowerCase().includes(termo));
     }
@@ -172,7 +172,7 @@ function EditarCliente() {
 
   const toggleModulo = (slug: string) => {
     setCliente((c) => {
-      const atual = c.modulos_contratados || [];
+      const atual = Array.isArray(c.modulos_contratados) ? c.modulos_contratados : [];
       const updated = atual.includes(slug) ? atual.filter((s) => s !== slug) : [...atual, slug];
       return { ...c, modulos_contratados: updated };
     });
@@ -379,7 +379,7 @@ function EditarCliente() {
           <Label>Módulos contratados</Label>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 pt-1">
             {opcoesModulos.tempo.map((modulo) => {
-              const modulosContratados = cliente.modulos_contratados || [];
+              const modulosContratados = Array.isArray(cliente.modulos_contratados) ? cliente.modulos_contratados : [];
               const checked = modulosContratados.includes(modulo.slug);
               return (
                 <label key={modulo.slug} className="flex items-center gap-2 text-sm font-medium cursor-pointer">
@@ -471,7 +471,7 @@ function EditarCliente() {
               </Button>
             </div>
             <ul className="divide-y rounded-md border">
-              {dominiosVisiveis.map((d) => {
+              {dominiosVisiveis?.map((d) => {
                 const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
                 return (
                   <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
@@ -508,7 +508,7 @@ function EditarCliente() {
                         }}
                       >
                         <option value="">— sem módulo —</option>
-                        {opcoesModulos.slug.map((s) => (
+                        {opcoesModulos.slugs.map((s: string) => (
                           <option key={s} value={s}>
                             {s}
                           </option>
