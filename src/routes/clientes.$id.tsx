@@ -64,6 +64,7 @@ const SLUGS_MODULOS_PADRAO = [
   "rural",
   "transportadora",
   "defensivo",
+  "contabilidade",
 ] as const;
 
 function EditarCliente() {
