@@ -152,12 +152,44 @@ function ListaClientes() {
 
       {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
 
-      <Input placeholder="Buscar por nome fantasia..." value={busca} onChange={(e) => setBusca(e.target.value)} className="max-w-sm bg-background" />
+      <Input placeholder="Buscar por nome fantasia..." value={busca} onChange={(e) => setBusca(e.target.value)} className="w-full bg-background sm:max-w-sm" />
 
       {erro && <p className="text-sm text-destructive">{erro}</p>}
       {carregando && <p className="text-sm text-muted-foreground">Carregando...</p>}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="space-y-2 md:hidden">
+        {filtrados.map((cliente) => (
+          <div key={cliente.id} className="rounded-lg border bg-card p-3">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <Link to="/clientes/$id" params={{ id: String(cliente.id) }} className="min-w-0 truncate font-medium text-foreground hover:underline">
+                {cliente.nome_fantasia ?? "(sem nome)"}
+              </Link>
+              <ProdutoBadge valor={cliente.produto} produtos={produtos} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Badge variant={cliente.ativo ? "default" : "secondary"}>{cliente.ativo ? "Ativo" : "Inativo"}</Badge>
+              <StatusPagamentoBadge valor={cliente.status_pagamento} />
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+              <span>
+                {cliente.valor_mensal != null
+                  ? `R$ ${cliente.valor_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
+                {" · Venc. "}
+                {cliente.dia_vencimento ?? "—"}
+              </span>
+              <Button variant="ghost" size="sm" disabled={clonandoId === cliente.id} onClick={() => clonarCliente(cliente)}>
+                {clonandoId === cliente.id ? "Clonando..." : "Clonar"}
+              </Button>
+            </div>
+          </div>
+        ))}
+        {!carregando && filtrados.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border bg-card md:block">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/50 text-left text-muted-foreground">
             <tr>
