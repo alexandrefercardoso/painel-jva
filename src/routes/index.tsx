@@ -79,7 +79,7 @@ function ListaClientes() {
   const clonarCliente = async (cliente: Cliente) => {
     const nomeBase = cliente.nome_fantasia || "(sem nome)";
     const confirmacao = confirm(
-      `Clonar o cliente "${nomeBase}" com todos os seus domínios vinculados?`,
+      `Clonar o registro do cliente "${nomeBase}"?\n\nOs domínios NÃO são copiados: cada domínio pertence a um único cliente e deve ser cadastrado manualmente no novo cliente.`,
     );
     if (!confirmacao) return;
 
@@ -132,46 +132,7 @@ function ListaClientes() {
         return;
       }
 
-      const novoId = String((novoCliente as Cliente).id);
-
-      // Copia os domínios do cliente original
-      const { data: dominios, error: erroDominios } = await sb
-        .from("dominios")
-        .select("dominio, modulo, is_primary")
-        .eq("cliente_id", cliente.id);
-
-      if (erroDominios) {
-        setErro(erroDominios.message);
-        return;
-      }
-
-      if (dominios && dominios.length > 0) {
-        const copias = dominios.map((d) => ({
-          cliente_id: novoId,
-          dominio: d.dominio,
-          modulo: d.modulo,
-          is_primary: d.is_primary,
-        }));
-        const { error: erroInsert } = await sb.from("dominios").insert(copias);
-        if (erroInsert) {
-          if (erroInsert.message.includes("dominios_dominio_key")) {
-            setErro(
-              "A tabela 'dominios' tem uma restrição de unicidade global na coluna 'dominio'. " +
-                "O banco exige que cada valor de domínio seja único no mundo, o que impede clonar. " +
-                "Execute no SQL Editor do Supabase: ALTER TABLE public.dominios DROP CONSTRAINT IF EXISTS dominios_dominio_key; " +
-                "e depois: ALTER TABLE public.dominios ADD CONSTRAINT dominios_cliente_dominio_key UNIQUE (cliente_id, dominio);",
-            );
-          } else {
-            setErro(erroInsert.message);
-          }
-          // Remove o cliente recém-criado para não deixar registro órfão
-          await sb.from("clientes").delete().eq("id", novoId);
-          await carregarClientes();
-          return;
-        }
-      }
-
-      setMsg(`Cliente "${novoNome}" criado com os domínios do cliente original.`);
+      setMsg(`Cliente "${novoNome}" criado. Cadastre manualmente os domínios dele (1 domínio = 1 cliente).`);
       await carregarClientes();
     } finally {
       setClonandoId(null);

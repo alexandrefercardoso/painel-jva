@@ -4,6 +4,7 @@ import { PainelLayout } from "@/components/PainelLayout";
 import {
   getClient,
   carregarProdutos,
+  donoDoDominio,
   type Cliente,
   type Dominio,
   type Modulo,
@@ -243,23 +244,43 @@ function EditarCliente() {
 
   const adicionarDominio = async () => {
     if (!clienteId || !novoDominio.trim()) return;
+    const dono = await donoDoDominio(novoDominio.trim(), clienteId);
+    if (dono) {
+      setErro(
+        `O domínio "${novoDominio.trim()}" já pertence ao cliente "${dono.nome}". Um domínio só pode pertencer a um único cliente — remova-o no cadastro dele antes de adicionar aqui.`,
+      );
+      return;
+    }
     const { error } = await getClient()
       .from("dominios")
       .insert({ cliente_id: clienteId, dominio: novoDominio.trim(), modulo: cliente.produto?.toLowerCase() ?? "meupedix" });
     if (error) setErro(error.message);
     else {
+      setErro(null);
       setNovoDominio("");
       carregarDominios(clienteId);
     }
   };
 
   const salvarDominio = async (dominioId: string, valor: string, modulo: string | null, isPrimary: boolean) => {
+    if (clienteId) {
+      const dono = await donoDoDominio(valor, clienteId);
+      if (dono) {
+        setErro(
+          `O domínio "${valor}" já pertence ao cliente "${dono.nome}". Um domínio só pode pertencer a um único cliente.`,
+        );
+        return;
+      }
+    }
     const { error } = await getClient()
       .from("dominios")
       .update({ dominio: valor.trim() || null, modulo: modulo || null, is_primary: isPrimary })
       .eq("id", dominioId);
     if (error) setErro(error.message);
-    else setMsg("Domínio atualizado.");
+    else {
+      setErro(null);
+      setMsg("Domínio atualizado.");
+    }
   };
 
   const removerDominio = async (dominioId: string) => {

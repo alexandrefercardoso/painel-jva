@@ -128,3 +128,42 @@ export type Dominio = {
   is_primary: boolean | null;
   created_at?: string;
 };
+
+// Normaliza o domínio igual à RPC get_config_por_dominio:
+// remove protocolo, caminho, porta, "www." e espaços — funciona em minúsculas.
+export function normalizaDominio(valor: string | null): string {
+  let v = (valor ?? "").trim().toLowerCase().replace(/\s+/g, "");
+  if (!v) return "";
+  v = v.split("?")[0];
+  v = v.replace(/^[a-z0-9]+:\/\//, "");
+  v = v.split("/")[0];
+  v = v.replace(/:\d+$/, "");
+  v = v.replace(/^www\./, "");
+  return v;
+}
+
+export type DonoDominio = { cliente_id: string; nome: string | null };
+
+// Identifica se um domínio já pertence a OUTRO cliente (regra: 1 domínio = 1 cliente).
+export async function donoDoDominio(
+  valor: string,
+  clienteId?: string | null,
+): Promise<DonoDominio | null> {
+  const norm = normalizaDominio(valor);
+  if (!norm) return null;
+  let query = getClient().from("dominios").select("cliente_id, dominio");
+  if (clienteId) query = query.neq("cliente_id", clienteId);
+  const { data, error } = await query;
+  if (error || !data) return null;
+  const conflito = data.find((d) => normalizaDominio(d.dominio ?? "") === norm);
+  if (!conflito) return null;
+  const { data: donoData } = await getClient()
+    .from("clientes")
+    .select("nome_fantasia")
+    .eq("id", conflito.cliente_id)
+    .maybeSingle();
+  return {
+    cliente_id: conflito.cliente_id,
+    nome: (donoData as { nome_fantasia: string | null } | null)?.nome_fantasia ?? conflito.cliente_id,
+  };
+}
