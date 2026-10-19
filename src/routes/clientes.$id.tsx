@@ -480,9 +480,14 @@ function EditarCliente() {
         {!clienteId && <p className="text-sm text-muted-foreground">Salve o cliente para adicionar domínios.</p>}
         {clienteId && (
           <>
-            <div className="flex gap-2">
-              <Input placeholder="exemplo.com.br" value={novoDominio} onChange={(e) => setNovoDominio(e.target.value)} />
-              <Button variant="secondary" onClick={adicionarDominio}>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="exemplo.com.br"
+                value={novoDominio}
+                onChange={(e) => setNovoDominio(e.target.value)}
+                className="min-w-0 flex-1"
+              />
+              <Button variant="secondary" onClick={adicionarDominio} className="shrink-0">
                 Adicionar
               </Button>
             </div>
