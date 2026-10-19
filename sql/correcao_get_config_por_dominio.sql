@@ -22,8 +22,8 @@
 -- SELECT * FROM public.get_config_por_dominio('id-preview--eee322ef-a722-45c5-9adb-031a0d7d1d61.lovable.app');
 -- SELECT * FROM public.get_config_por_dominio('http://localhost:8080');  -- hostnames com protocolo/porta também casam
 --
--- Cliente inativo deve retornar vazio (ativo = true é obrigatório):
--- SELECT * FROM public.get_config_por_dominio('<dominio-de-cliente-inativo>');
+-- Cliente INATIVO também deve responder (a RPC não filtra por ativo).
+-- Se o mesmo domínio estiver em 2 clientes, vence o cadastro MAIS RECENTE.
 -- ============================================================================
 
 -- Remover a versão antiga da função (retorno antigo tem OUT params diferentes).
@@ -67,8 +67,11 @@ AS $$
   FROM dominios_norm d
   JOIN alvo a           ON d.dominio_norm = a.dominio_norm
   JOIN public.clientes c ON c.id = d.cliente_id
-  WHERE c.ativo = true
-  ORDER BY d.is_primary DESC NULLS LAST, d.created_at DESC NULLS LAST
+  -- Sem filtro de ativo: o cliente certo responde mesmo inativo.
+  -- Sem is_primary: o domínio pertence ao cliente que o cadastrou.
+  -- Empate (mesmo domínio em 2 clientes, por erro de cadastro) resolve
+  -- para o cadastramento MAIS RECENTE — corrigir o dup no painel.
+  ORDER BY d.created_at DESC NULLS LAST
   LIMIT 1;
 $$;
 
@@ -83,6 +86,6 @@ GRANT EXECUTE ON FUNCTION public.get_config_por_dominio(text) TO anon, authentic
 -- SELECT * FROM public.get_config_por_dominio('id-preview--eee322ef-a722-45c5-9adb-031a0d7d1d61.lovable.app');
 -- SELECT * FROM public.get_config_por_dominio('http://localhost:8080');  -- hostnames com protocolo/porta também casam
 --
--- Cliente inativo deve retornar vazio (ativo = true é obrigatório):
--- SELECT * FROM public.get_config_por_dominio('<dominio-de-cliente-inativo>');
+-- Cliente INATIVO também deve responder (a RPC não filtra por ativo).
+-- Se o mesmo domínio estiver em 2 clientes, vence o cadastro MAIS RECENTE.
 -- ============================================================================
