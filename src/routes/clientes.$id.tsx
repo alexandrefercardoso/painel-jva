@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { PainelLayout } from "@/components/PainelLayout";
 import {
   getClient,
+  carregarProdutos,
   type Cliente,
   type Dominio,
   type Modulo,
   type ModoTipo,
-  type ProdutoTipo,
+  type Produto,
   OPCOES_MODO,
 } from "@/lib/painel-db";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/clientes/$id")({
 });
 
 const vazio: Partial<Cliente> = {
-  produto: "MeuPedix",
+  produto: "meupedix",
   nome_fantasia: "",
   contato: "",
   telefone: "",
@@ -76,6 +77,7 @@ function EditarCliente() {
   const [clienteId, setClienteId] = useState<string | null>(novo ? null : id);
   const [dominios, setDominios] = useState<Dominio[]>([]);
   const [modulos, setModulos] = useState<Modulo[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [definicaoModulos, setDefinicaoModulos] = useState<string | null>(null);
   const [novoDominio, setNovoDominio] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -126,8 +128,14 @@ function EditarCliente() {
     }
   };
 
+  const carregarListaProdutos = async () => {
+    const lista = await carregarProdutos();
+    setProdutos(lista);
+  };
+
   useEffect(() => {
     carregarModulos();
+    carregarListaProdutos();
     if (novo) return;
     getClient()
       .from("clientes")
@@ -138,10 +146,10 @@ function EditarCliente() {
         if (error) setErro(error.message);
         else if (data) {
           const rawCli = data as Cliente;
-          const produtoFinal: ProdutoTipo =
-            rawCli.produto && rawCli.produto.toString().toLowerCase() === "silun"
-              ? "Silun"
-              : "MeuPedix";
+          // produto é salvo como slug em minúsculas; normaliza para comparação
+          const produtoFinal: string | null = rawCli.produto
+            ? String(rawCli.produto).toLowerCase()
+            : null;
           setCliente({ ...rawCli, produto: produtoFinal });
           carregarDominios(id);
         }
@@ -191,7 +199,7 @@ function EditarCliente() {
     }
 
     const payloadCore = {
-      produto: (cliente.produto ?? "MeuPedix").toLowerCase(),
+      produto: (cliente.produto ?? "meupedix").toLowerCase(),
       nome_fantasia: cliente.nome_fantasia || null,
       contato: cliente.contato || null,
       telefone: cliente.telefone || null,
@@ -293,18 +301,30 @@ function EditarCliente() {
 
       <section className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
         <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="produto">
-            Produto <span className="text-destructive">*</span>
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="produto">
+              Produto <span className="text-destructive">*</span>
+            </Label>
+            <Link to="/produtos" className="text-xs text-muted-foreground hover:underline">
+              Gerenciar produtos →
+            </Link>
+          </div>
           <select
             id="produto"
             disabled={!novo}
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            value={cliente.produto ?? "MeuPedix"}
-            onChange={(e) => campo("produto", e.target.value as ProdutoTipo)}
+            value={cliente.produto ?? ""}
+            onChange={(e) => campo("produto", e.target.value)}
           >
-            <option value="MeuPedix">MeuPedix</option>
-            <option value="Silun">Silun</option>
+            <option value="">— selecione —</option>
+            {!produtos.some((p) => p.slug.toLowerCase() === cliente.produto) && cliente.produto && (
+              <option value={cliente.produto}>{cliente.produto}</option>
+            )}
+            {produtos.map((p) => (
+              <option key={p.slug} value={p.slug.toLowerCase()}>
+                {p.nome}
+              </option>
+            ))}
           </select>
           {!novo && (
             <p className="text-xs text-muted-foreground">O produto não pode ser alterado após a criação.</p>

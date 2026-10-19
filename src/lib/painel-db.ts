@@ -60,9 +60,34 @@ export function getClient(): SupabaseClient {
 }
 
 
-export type ProdutoTipo = "MeuPedix" | "Silun";
-
 export type ModoTipo = "compartilhado" | "individual";
+
+export type Produto = {
+  id: string;
+  slug: string;
+  nome: string;
+  ativo: boolean | null;
+  ordem: number | null;
+};
+
+// Produtos padrão usados quando a tabela 'produtos' não existe ou está vazia.
+export const PRODUTOS_PADRAO: Produto[] = [
+  { id: "meupedix", slug: "meupedix", nome: "MeuPedix", ativo: true, ordem: 1 },
+  { id: "silun", slug: "silun", nome: "Silun", ativo: true, ordem: 2 },
+];
+
+export async function carregarProdutos(): Promise<Produto[]> {
+  try {
+    const { data, error } = await getClient()
+      .from("produtos")
+      .select("*")
+      .order("ordem", { ascending: true });
+    if (!error && data && data.length > 0) return data as Produto[];
+  } catch {
+    // tabela ainda não criada — usa os produtos padrão
+  }
+  return PRODUTOS_PADRAO;
+}
 
 export type Cliente = {
   id: string;
@@ -75,7 +100,7 @@ export type Cliente = {
   status_pagamento: string | null;
   observacoes: string | null;
   ativo: boolean | null;
-  produto: ProdutoTipo | null;
+  produto: string | null;
   empresa_id: string | null;
   email_login_supabase: string | null;
   supabase_url: string | null;

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PainelLayout } from "@/components/PainelLayout";
-import { getClient, isConfigured, MSG_SEM_CONFIG, type Cliente } from "@/lib/painel-db";
+import { getClient, carregarProdutos, isConfigured, MSG_SEM_CONFIG, type Cliente, type Produto } from "@/lib/painel-db";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,18 +31,34 @@ export function StatusPagamentoBadge({ valor }: { valor: string | null }) {
   return <Badge variant={variant}>{rotulo}</Badge>;
 }
 
-export function ProdutoBadge({ valor }: { valor: string | null }) {
-  if (valor && valor.toString().toLowerCase() === "silun") {
-    return <Badge variant="outline" className="border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-400">Silun</Badge>;
+export function ProdutoBadge({ valor, produtos }: { valor: string | null; produtos: Produto[] }) {
+  const valorLower = valor?.toLowerCase() ?? "";
+  const produto = produtos.find((p) => p.slug.toLowerCase() === valorLower);
+  const rotulo = produto?.nome ?? (valor ? valor.charAt(0).toUpperCase() + valor.slice(1) : "—");
+  if (valorLower === "silun") {
+    return <Badge variant="outline" className="border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-400">{rotulo}</Badge>;
   }
-  return <Badge variant="outline" className="border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400">MeuPedix</Badge>;
+  return <Badge variant="outline" className="border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400">{rotulo}</Badge>;
 }
 
 function ListaClientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [busca, setBusca] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [clonandoId, setClonandoId] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const carregarClientes = async () => {
+    const { data, error } = await getClient()
+      .from("clientes")
+      .select("*")
+      .order("nome_fantasia", { ascending: true });
+    if (error) setErro(error.message);
+    else setClientes((data ?? []) as Cliente[]);
+    setCarregando(false);
+  };
 
   useEffect(() => {
     if (!isConfigured()) {
@@ -50,15 +66,8 @@ function ListaClientes() {
       setCarregando(false);
       return;
     }
-    getClient()
-      .from("clientes")
-      .select("*")
-      .order("nome_fantasia", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) setErro(error.message);
-        else setClientes((data ?? []) as Cliente[]);
-        setCarregando(false);
-      });
+    carregarClientes();
+    carregarProdutos().then(setProdutos);
   }, []);
 
   const filtrados = useMemo(() => {
@@ -66,6 +75,108 @@ function ListaClientes() {
     if (!termo) return clientes;
     return clientes.filter((c) => (c.nome_fantasia ?? "").toLowerCase().includes(termo));
   }, [clientes, busca]);
+
+  const clonarCliente = async (cliente: Cliente) => {
+    const nomeBase = cliente.nome_fantasia || "(sem nome)";
+    const confirmacao = confirm(
+      `Clonar o cliente "${nomeBase}" com todos os seus domínios vinculados?`,
+    );
+    if (!confirmacao) return;
+
+    setClonandoId(cliente.id);
+    setErro(null);
+    setMsg(null);
+
+    try {
+      // Gera um nome único (cópia, cópia 2, cópia 3...)
+      const nomesExistentes = new Set(
+        clientes.map((c) => (c.nome_fantasia ?? "").toLowerCase()),
+      );
+      let novoNome = `${nomeBase} (cópia)`;
+      let contador = 2;
+      while (nomesExistentes.has(novoNome.toLowerCase())) {
+        novoNome = `${nomeBase} (cópia ${contador})`;
+        contador++;
+      }
+
+      const sb = getClient();
+
+      // Cria o novo cliente com os mesmos dados (sem id)
+      const payloadCore = {
+        produto: cliente.produto,
+        nome_fantasia: novoNome,
+        contato: cliente.contato,
+        telefone: cliente.telefone,
+        email_contato: cliente.email_contato,
+        valor_mensal: cliente.valor_mensal,
+        dia_vencimento: cliente.dia_vencimento,
+        status_pagamento: cliente.status_pagamento,
+        observacoes: cliente.observacoes,
+        ativo: cliente.ativo,
+        empresa_id: cliente.empresa_id,
+        email_login_supabase: cliente.email_login_supabase,
+        supabase_url: cliente.supabase_url,
+        supabase_anon_key: cliente.supabase_anon_key,
+        modulos_contratados: cliente.modulos_contratados,
+        modo: cliente.modo,
+      };
+
+      const { data: novoCliente, error: erroCliente } = await sb
+        .from("clientes")
+        .insert(payloadCore)
+        .select()
+        .maybeSingle();
+
+      if (erroCliente || !novoCliente) {
+        setErro(erroCliente?.message || "Erro ao clonar cliente.");
+        return;
+      }
+
+      const novoId = String((novoCliente as Cliente).id);
+
+      // Copia os domínios do cliente original
+      const { data: dominios, error: erroDominios } = await sb
+        .from("dominios")
+        .select("dominio, modulo, is_primary")
+        .eq("cliente_id", cliente.id);
+
+      if (erroDominios) {
+        setErro(erroDominios.message);
+        return;
+      }
+
+      if (dominios && dominios.length > 0) {
+        const copias = dominios.map((d) => ({
+          cliente_id: novoId,
+          dominio: d.dominio,
+          modulo: d.modulo,
+          is_primary: d.is_primary,
+        }));
+        const { error: erroInsert } = await sb.from("dominios").insert(copias);
+        if (erroInsert) {
+          if (erroInsert.message.includes("dominios_dominio_key")) {
+            setErro(
+              "A tabela 'dominios' tem uma restrição de unicidade global na coluna 'dominio'. " +
+                "O banco exige que cada valor de domínio seja único no mundo, o que impede clonar. " +
+                "Execute no SQL Editor do Supabase: ALTER TABLE public.dominios DROP CONSTRAINT IF EXISTS dominios_dominio_key; " +
+                "e depois: ALTER TABLE public.dominios ADD CONSTRAINT dominios_cliente_dominio_key UNIQUE (cliente_id, dominio);",
+            );
+          } else {
+            setErro(erroInsert.message);
+          }
+          // Remove o cliente recém-criado para não deixar registro órfão
+          await sb.from("clientes").delete().eq("id", novoId);
+          await carregarClientes();
+          return;
+        }
+      }
+
+      setMsg(`Cliente "${novoNome}" criado com os domínios do cliente original.`);
+      await carregarClientes();
+    } finally {
+      setClonandoId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -77,6 +188,8 @@ function ListaClientes() {
           </Link>
         </Button>
       </div>
+
+      {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
 
       <Input placeholder="Buscar por nome fantasia..." value={busca} onChange={(e) => setBusca(e.target.value)} className="max-w-sm bg-background" />
 
@@ -93,6 +206,7 @@ function ListaClientes() {
               <th className="px-4 py-2 font-medium">Pagamento</th>
               <th className="px-4 py-2 font-medium">Valor mensal</th>
               <th className="px-4 py-2 font-medium">Vencimento</th>
+              <th className="px-4 py-2 font-medium text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +218,7 @@ function ListaClientes() {
                   </Link>
                 </td>
                 <td className="px-4 py-2">
-                  <ProdutoBadge valor={cliente.produto} />
+                  <ProdutoBadge valor={cliente.produto} produtos={produtos} />
                 </td>
                 <td className="px-4 py-2">
                   <Badge variant={cliente.ativo ? "default" : "secondary"}>{cliente.ativo ? "Ativo" : "Inativo"}</Badge>
@@ -118,11 +232,21 @@ function ListaClientes() {
                     : "—"}
                 </td>
                 <td className="px-4 py-2">{cliente.dia_vencimento ?? "—"}</td>
+                <td className="px-4 py-2 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={clonandoId === cliente.id}
+                    onClick={() => clonarCliente(cliente)}
+                  >
+                    {clonandoId === cliente.id ? "Clonando..." : "Clonar"}
+                  </Button>
+                </td>
               </tr>
             ))}
             {!carregando && filtrados.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
