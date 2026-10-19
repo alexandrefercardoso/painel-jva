@@ -3,15 +3,23 @@
 This repository uses a strict multi-product architecture connected to Supabase.
 All AI assistants (including Lovable) MUST strictly follow these rules:
 
-## 1. Database Architecture & Extension Tables
-- Core table: `clientes` (contains common fields: `nome_fantasia`, `contato`, `telefone`, `email_contato`, `valor_mensal`, `dia_vencimento`, `status_pagamento`, `observacoes`, `ativo`, `produto`).
-- Check constraint: `clientes_produto_check` enforces lowercase `'meupedix'` or `'silun'` for column `produto`.
-- Extension table 1: `clientes_meupedix` (1-to-1 with `clientes` via `cliente_id` primary key).
-  - Contains: `email_login_supabase`, `supabase_url`, `supabase_anon_key`.
-  - Saving MUST use `.upsert(payload, { onConflict: "cliente_id" })`.
-- Extension table 2: `clientes_silun` (1-to-1 with `clientes` via `cliente_id` primary key).
-  - Contains: `empresa_id`, `modulos_contratados` (array of strings: `["Núcleo", "PDV", "Cereais", "Rural", "Transportadora", "Defensivo"]`).
-  - Saving MUST use `.upsert(payload, { onConflict: "cliente_id" })`.
+## 1. Database Architecture (modelo atual — consolidado em 2026-08-20)
+- Core table: `clientes` contém TODOS os campos do cliente, inclusive as antigas
+  colunas de extensão: `nome_fantasia`, `contato`, `telefone`, `email_contato`,
+  `valor_mensal`, `dia_vencimento`, `status_pagamento`, `observacoes`, `ativo`,
+  `produto` (slug em minúsculas; veja tabela `produtos` abaixo),
+  `empresa_id`, `modulos_contratados`, `email_login_supabase`,
+  `supabase_url`, `supabase_anon_key`, `modo`.
+- Tabela `produtos`: catálogo flexível de produtos (`id`, `slug` UNIQUE, `nome`,
+  `ativo`, `ordem`). O combo "Produto" do cadastro de clientes lê esta tabela;
+  se ela não existir, usam-se os padrões `meupedix`/`silun` (fallback em código).
+  O check `clientes_produto_check` pode limitar slugs — ao criar um produto novo,
+  ajuste ou remova essa regra no Supabase.
+- As tables de extensão `clientes_meupedix` e `clientes_silun` **NÃO EXISTEM MAIS**
+  (foram consolidadas dentro de `clientes`). NUNCA crie queries/upserts contra elas.
+- Domínios: tabela `dominios` (`cliente_id` → `clientes.id`, `dominio`, `modulo`, `is_primary`).
+- RPC `get_config_por_dominio(p_dominio text)`: resolve domínio → configuração do
+  cliente (lê `dominios` + `clientes`, somente com `ativo = true`).
 
 ## 2. UI & Conditional Rendering
 - The **Produto** field is a required select at the top of the client form.
