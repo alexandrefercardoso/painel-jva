@@ -15,6 +15,21 @@
 -- Retorno:   linhas com supabase_url, supabase_anon_key, ativo, nome_fantasia
 -- ============================================================================
 
+-- ============================================================================
+-- TESTES após aplicar (deve retornar 1 linha do cliente Marcao lanches):
+--
+-- SELECT * FROM public.get_config_por_dominio('meupedix-cardapiodigital.lovable.app');
+-- SELECT * FROM public.get_config_por_dominio('id-preview--eee322ef-a722-45c5-9adb-031a0d7d1d61.lovable.app');
+-- SELECT * FROM public.get_config_por_dominio('http://localhost:8080');  -- hostnames com protocolo/porta também casam
+--
+-- Cliente inativo deve retornar vazio (ativo = true é obrigatório):
+-- SELECT * FROM public.get_config_por_dominio('<dominio-de-cliente-inativo>');
+-- ============================================================================
+
+-- Remover a versão antiga da função (retorno antigo tem OUT params diferentes).
+-- A grante/revoke abaixo é refeita ao final.
+DROP FUNCTION IF EXISTS public.get_config_por_dominio(text);
+
 CREATE OR REPLACE FUNCTION public.get_config_por_dominio(p_dominio text)
 RETURNS TABLE (
   supabase_url      text,
@@ -56,6 +71,10 @@ AS $$
   ORDER BY d.is_primary DESC NULLS LAST, d.created_at DESC NULLS LAST
   LIMIT 1;
 $$;
+
+-- O DROP acima apaga os grants da função antiga; reotorga acesso ao anon
+-- (a chave pública usada pelos apps MeuPedix/Silun via REST do Supabase).
+GRANT EXECUTE ON FUNCTION public.get_config_por_dominio(text) TO anon, authenticated;
 
 -- ============================================================================
 -- TESTES após aplicar (deve retornar 1 linha do cliente Marcao lanches):
