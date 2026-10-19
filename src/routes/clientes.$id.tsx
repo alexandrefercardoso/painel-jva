@@ -522,6 +522,10 @@ function EditarCliente() {
             <ul className="divide-y rounded-md border">
               {dominiosVisiveis?.map((d) => {
                 const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
+                const editarDominio = (valor: string) =>
+                  setDominios((lista) => lista.map((x) => (x.id === d.id ? { ...x, dominio: valor } : x)));
+                const gravarDominio = (valor: string) =>
+                  salvarDominio(String(d.id), valor, d.modulo, d.is_primary ?? false);
                 return (
                   <li key={d.id} className="grid min-w-0 gap-2 px-3 py-2 text-sm sm:flex sm:flex-wrap sm:items-center">
                     <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 sm:flex-1 sm:items-center">
