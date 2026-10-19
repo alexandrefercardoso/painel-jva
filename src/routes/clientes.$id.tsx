@@ -299,19 +299,21 @@ function EditarCliente() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
           <Link to="/" className="text-sm text-muted-foreground hover:underline">
             ← Voltar
           </Link>
-          <h1 className="text-xl font-semibold text-foreground">{clienteId ? cliente.nome_fantasia || "Cliente" : "Novo cliente"}</h1>
+          <h1 className="truncate text-lg font-semibold text-foreground sm:text-xl">
+            {clienteId ? cliente.nome_fantasia || "Cliente" : "Novo cliente"}
+          </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center justify-end gap-3 sm:shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <Switch id="ativo" checked={!!cliente.ativo} onCheckedChange={(v) => campo("ativo", v)} />
             <Label htmlFor="ativo">{cliente.ativo ? "Ativo" : "Inativo"}</Label>
           </div>
-          <Button onClick={salvar} disabled={salvando}>
+          <Button onClick={salvar} disabled={salvando} className="shrink-0">
             {salvando ? "Salvando..." : "Salvar"}
           </Button>
         </div>
