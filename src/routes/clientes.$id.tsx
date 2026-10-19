@@ -299,19 +299,21 @@ function EditarCliente() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
           <Link to="/" className="text-sm text-muted-foreground hover:underline">
             ← Voltar
           </Link>
-          <h1 className="text-xl font-semibold text-foreground">{clienteId ? cliente.nome_fantasia || "Cliente" : "Novo cliente"}</h1>
+          <h1 className="truncate text-lg font-semibold text-foreground sm:text-xl">
+            {clienteId ? cliente.nome_fantasia || "Cliente" : "Novo cliente"}
+          </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center justify-end gap-3 sm:shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <Switch id="ativo" checked={!!cliente.ativo} onCheckedChange={(v) => campo("ativo", v)} />
             <Label htmlFor="ativo">{cliente.ativo ? "Ativo" : "Inativo"}</Label>
           </div>
-          <Button onClick={salvar} disabled={salvando}>
+          <Button onClick={salvar} disabled={salvando} className="shrink-0">
             {salvando ? "Salvando..." : "Salvar"}
           </Button>
         </div>
@@ -478,9 +480,14 @@ function EditarCliente() {
         {!clienteId && <p className="text-sm text-muted-foreground">Salve o cliente para adicionar domínios.</p>}
         {clienteId && (
           <>
-            <div className="flex gap-2">
-              <Input placeholder="exemplo.com.br" value={novoDominio} onChange={(e) => setNovoDominio(e.target.value)} />
-              <Button variant="secondary" onClick={adicionarDominio}>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="exemplo.com.br"
+                value={novoDominio}
+                onChange={(e) => setNovoDominio(e.target.value)}
+                className="min-w-0 flex-1"
+              />
+              <Button variant="secondary" onClick={adicionarDominio} className="shrink-0">
                 Adicionar
               </Button>
             </div>
@@ -515,10 +522,15 @@ function EditarCliente() {
             <ul className="divide-y rounded-md border">
               {dominiosVisiveis?.map((d) => {
                 const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
+                const editarDominio = (valor: string) =>
+                  setDominios((lista) => lista.map((x) => (x.id === d.id ? { ...x, dominio: valor } : x)));
+                const gravarDominio = (valor: string) =>
+                  salvarDominio(String(d.id), valor, d.modulo, d.is_primary ?? false);
                 return (
-                  <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-                    <div className="flex min-w-[280px] flex-1 items-center gap-2">
+                  <li key={d.id} className="grid min-w-0 gap-2 px-3 py-2 text-sm sm:flex sm:flex-wrap sm:items-center">
+                    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 sm:flex-1 sm:items-center">
                       <Checkbox
+                        className="mt-0.5 shrink-0 sm:mt-0"
                         checked={d.is_primary ?? false}
                         onCheckedChange={(checked) => {
                           const val = !!checked;
@@ -528,46 +540,54 @@ function EditarCliente() {
                           salvarDominio(String(d.id), d.dominio ?? "", d.modulo, val);
                         }}
                       />
-                      <Input
+                      <Textarea
+                        rows={1}
+                        aria-label="Domínio"
                         value={d.dominio ?? ""}
-                        onChange={(e) =>
-                          setDominios((lista) =>
-                            lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
-                          )
-                        }
-                        onBlur={(e) => salvarDominio(String(d.id), e.target.value, d.modulo, d.is_primary ?? false)}
+                        onChange={(e) => editarDominio(e.target.value)}
+                        onBlur={(e) => gravarDominio(e.target.value)}
+                        className="min-h-0 min-w-0 field-sizing-content resize-none overflow-hidden py-1.5 text-sm sm:hidden"
                       />
-                      <select
-                        aria-label="Módulo do domínio"
-                        className="h-9 w-40 shrink-0 rounded-md border border-input bg-background px-3 text-sm"
-                        value={d.modulo ?? ""}
-                        onChange={(e) => {
-                          const valor = e.target.value || null;
-                          setDominios((lista) =>
-                            lista.map((x) => (x.id === d.id ? { ...x, modulo: valor } : x)),
-                          );
-                          salvarDominio(String(d.id), d.dominio ?? "", valor, d.is_primary ?? false);
-                        }}
-                      >
-                        <option value="">— sem módulo —</option>
-                        {opcoesModulos.slugs.map((s: string) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                      <Input
+                        aria-label="Domínio"
+                        value={d.dominio ?? ""}
+                        onChange={(e) => editarDominio(e.target.value)}
+                        onBlur={(e) => gravarDominio(e.target.value)}
+                        className="hidden min-w-0 sm:block"
+                      />
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "", d.modulo, d.is_primary ?? false)}>
-                      Salvar
-                    </Button>
-                    <Button variant="ghost" size="sm" asChild>
-                      <a href={urlDominio} target="_blank" rel="noopener noreferrer">
-                        Abrir
-                      </a>
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
-                      Remover
-                    </Button>
+                    <select
+                      aria-label="Módulo do domínio"
+                      className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm sm:w-40 sm:shrink-0"
+                      value={d.modulo ?? ""}
+                      onChange={(e) => {
+                        const valor = e.target.value || null;
+                        setDominios((lista) =>
+                          lista.map((x) => (x.id === d.id ? { ...x, modulo: valor } : x)),
+                        );
+                        salvarDominio(String(d.id), d.dominio ?? "", valor, d.is_primary ?? false);
+                      }}
+                    >
+                      <option value="">— sem módulo —</option>
+                      {opcoesModulos.slugs.map((s: string) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                      <Button variant="secondary" size="sm" onClick={() => salvarDominio(String(d.id), d.dominio ?? "", d.modulo, d.is_primary ?? false)}>
+                        Salvar
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={urlDominio} target="_blank" rel="noopener noreferrer">
+                          Abrir
+                        </a>
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => removerDominio(String(d.id))}>
+                        Remover
+                      </Button>
+                    </div>
                   </li>
                 );
               })}
