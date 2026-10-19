@@ -524,9 +524,9 @@ function EditarCliente() {
                 const urlDominio = d.dominio?.startsWith("http") ? d.dominio : `https://${d.dominio ?? ""}`;
                 return (
                   <li key={d.id} className="grid min-w-0 gap-2 px-3 py-2 text-sm sm:flex sm:flex-wrap sm:items-center">
-                    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex-1">
+                    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 sm:flex-1 sm:items-center">
                       <Checkbox
-                        className="shrink-0"
+                        className="mt-0.5 shrink-0 sm:mt-0"
                         checked={d.is_primary ?? false}
                         onCheckedChange={(checked) => {
                           const val = !!checked;
@@ -536,15 +536,20 @@ function EditarCliente() {
                           salvarDominio(String(d.id), d.dominio ?? "", d.modulo, val);
                         }}
                       />
-                      <Input
-                        className="min-w-0"
+                      <Textarea
+                        rows={1}
+                        aria-label="Domínio"
                         value={d.dominio ?? ""}
-                        onChange={(e) =>
-                          setDominios((lista) =>
-                            lista.map((x) => (x.id === d.id ? { ...x, dominio: e.target.value } : x)),
-                          )
-                        }
-                        onBlur={(e) => salvarDominio(String(d.id), e.target.value, d.modulo, d.is_primary ?? false)}
+                        onChange={(e) => editarDominio(e.target.value)}
+                        onBlur={(e) => gravarDominio(e.target.value)}
+                        className="min-h-0 min-w-0 field-sizing-content resize-none overflow-hidden py-1.5 text-sm sm:hidden"
+                      />
+                      <Input
+                        aria-label="Domínio"
+                        value={d.dominio ?? ""}
+                        onChange={(e) => editarDominio(e.target.value)}
+                        onBlur={(e) => gravarDominio(e.target.value)}
+                        className="hidden min-w-0 sm:block"
                       />
                     </div>
                     <select
