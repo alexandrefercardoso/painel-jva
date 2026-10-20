@@ -585,7 +585,13 @@ async function processarJob(job) {
       `Job ${job.id} — concluído em ${duracaoSeg}s (${stat.size} bytes, sha256 ${sha256.slice(0, 12)}…)`,
     );
   } catch (erro) {
-    const mensagem = sanitizar(erro?.message ?? String(erro)).slice(0, 800);
+    let mensagem = sanitizar(erro?.message ?? String(erro)).slice(0, 800);
+    if (mensagem.includes("server version mismatch")) {
+      mensagem += " — O pg_dump do worker é mais antigo que o servidor. O workflow "
+        + "backup-worker.yml sobe o cliente PostgreSQL via pgdg; confira se o job "
+        + "executou o passo 'Garantir PostgreSQL Client 17' e se o pg_dump é da versão "
+        + "igual/superior à do servidor (busque 'pg_dump: detail: server version').";
+    }
     logErro(`Job ${job.id} falhou: ${mensagem}`);
     passos.push(`[FALHA] ${mensagem}`);
 
@@ -1099,7 +1105,7 @@ async function processarExecucaoRestore(job) {
       throw new Error("Backup de segurança do destino saiu vazio — restauração abortada.");
     const shaSeg = await sha256Arquivo(caminhoSeg);
     const inventarioSeg = inventarioDoDump(caminhoSeg);
-    const pathSeg = `${destino.project_ref}/seguranca/${nomeSeg}`;
+    const pathSeg = `${String(destino.storage_prefix ?? "").trim() || destino.project_ref}/seguranca/${nomeSeg}`;
     execFileSync(
       "curl",
       [

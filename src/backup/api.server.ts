@@ -366,6 +366,24 @@ export const backupLogout = createServerFn({ method: "POST" }).handler(async () 
 // ===========================================================================
 // INSTÂNCIAS — CRUD (senha criptografada no servidor; nunca retorna ao front)
 // ===========================================================================
+/**
+ * Sanitiza o prefixo de destino do backup (pasta no bucket): minúsculas,
+ * sem acentos, espaços → "_" e descarta outros símbolos.
+ *
+ * Duplicado em src/backup/prefixo.ts — este arquivo é autocontido (sem
+ * imports relativos, ver cabeçalho) então o helper é co-locado aqui.
+ */
+const sanitizarPrefixoDestino = (valor: string): string =>
+  valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9._/-]+/g, "")
+    .replace(/^\/+|\/+$/g, "")
+    .slice(0, 120);
+
 const validatorInstancia = z.object({
   nome: z.string().min(2).max(80),
   cliente_id: z.string().uuid().nullable().optional(),
@@ -385,14 +403,9 @@ const validatorInstancia = z.object({
   credencial: z.string().min(4).max(200).nullable().optional(), // senha do banco postgres
   storage_prefix: z
     .string()
-    .max(120)
-    .regex(
-      /^[a-z0-9._\/-]*$/,
-      "Prefixo aceita apenas letras minúsculas, números, ponto, hífen, sublinhado ou barra.",
-    )
-    .transform((v) => v.replace(/^\/+|\/+$/g, ""))
     .nullable()
-    .optional(), // destino no bucket (vazio = project_ref)
+    .optional()
+    .transform((v) => sanitizarPrefixoDestino(v ?? "")), // destino no bucket (vazio = project_ref)
 });
 
 const SEM_SENDA = (row: Record<string, unknown>) => {
@@ -642,6 +655,7 @@ export type BackupArquivoResumo = {
   instance_nome: string;
   job_id: string | null;
   nome_arquivo: string;
+  storage_path: string;
   tamanho_bytes: number | null;
   sha256: string | null;
   tipo: "manual" | "automatico" | "seguranca";

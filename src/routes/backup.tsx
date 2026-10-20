@@ -67,6 +67,7 @@ import {
   type RestoreOperacaoResumo,
   type ResultadoConexao,
 } from "@/lib/backup-api";
+import { sanitizarPrefixoDestino } from "@/backup/prefixo";
 import { getClient, type Cliente } from "@/lib/painel-db";
 
 export const Route = createFileRoute("/backup")({
@@ -590,6 +591,12 @@ function SecaoBackups({
   const [executando, setExecutando] = useState(false);
   const [verificandoId, setVerificandoId] = useState<string | null>(null);
   const [logAberto, setLogAberto] = useState<BackupJobResumo | null>(null);
+
+  /** Arquivo .dump gerado por uma operação (para mostrar o destino no log). */
+  const arquivoDoJob = useCallback(
+    (jobId: string | null) => (jobId ? (arquivos.find((a) => a.job_id === jobId) ?? null) : null),
+    [arquivos],
+  );
   // Enquanto houver operação pendente/executando/validando, atualiza a cada 5s
   const haOperacaoAtiva = operacoes.some((o) =>
     ["pendente", "executando", "validando"].includes(o.status),
@@ -654,8 +661,30 @@ function SecaoBackups({
     }
   };
 
+  // Operação parada na fila há demais? Sinaliza o problema do worker.
+  const workerPreocupante = operacoes.find(
+    (o) =>
+      o.status === "pendente" &&
+      Date.now() - new Date(o.criado_em).getTime() > 15 * 60 * 1000,
+  );
+
   return (
     <div className="flex flex-col gap-4">
+      {workerPreocupante && (
+        <Alert className="border-amber-500/50">
+          <Loader2 className="size-4 animate-spin text-amber-600" />
+          <AlertTitle>Operação aguardando o worker há mais de 15 min</AlertTitle>
+          <AlertDescription>
+            O worker roda no GitHub Actions e verifica a fila a cada 5 minutos. Se o job continuar
+            "Aguardando worker", confira em <strong>GitHub → Actions → Backup Worker</strong> se
+            existem execuções e se os secrets{" "}
+            <code className="font-mono">
+              SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BACKUP_CRYPTO_KEY
+            </code>{" "}
+            estão configurados — há também o botão "Run workflow" para disparo manual.
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Backup manual</CardTitle>
@@ -691,10 +720,17 @@ function SecaoBackups({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Operações</CardTitle>
+          <CardTitle className="flex flex-wrap items-center gap-2">
+            Operações
+            {haOperacaoAtiva && (
+              <Badge className={ROTULO_STATUS_JOB.executando.classe}>
+                <Loader2 className="mr-1 size-3 animate-spin" /> backup em andamento
+              </Badge>
+            )}
+          </CardTitle>
           <CardDescription>
-            Últimas operações (atualização automática a cada 5s enquanto houver execução em
-            andamento).
+            Últimas operações (atualização automática a cada 5s enquanto houver fila). Jobs
+            aguardando são processados pelo worker (GitHub Actions) a cada 5 minutos.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -721,16 +757,20 @@ function SecaoBackups({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {op.log_execucao && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => setLogAberto(op)}
-                        >
-                          <History className="size-3.5" /> Log
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={!op.log_execucao?.trim()}
+                        title={
+                          op.log_execucao?.trim()
+                            ? "Ver log de execução"
+                            : "O log aparece assim que o worker assumir o job"
+                        }
+                        onClick={() => setLogAberto(op)}
+                      >
+                        <History className="size-3.5" /> Log
+                      </Button>
                       <span className="text-xs text-muted-foreground">
                         {op.status === "concluido"
                           ? `concluído em ${op.finalizado_em ? formataData(op.finalizado_em) : "—"}${
@@ -759,9 +799,24 @@ function SecaoBackups({
               Passo a passo executado pelo worker (GitHub Actions → pg_dump → validação → bucket).
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[50vh] overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-            {logAberto?.log_execucao ?? ""}
-          </pre>
+          {logAberto?.log_execucao?.trim() ? (
+            <pre className="max-h-[50vh] overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+              {logAberto.log_execucao}
+            </pre>
+          ) : (
+            <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+              Nenhum log gravado ainda. O worker grava cada passo (conexão, pg_dump, validação,
+              upload) em backup_jobs.log_execucao assim que assume o job.
+            </p>
+          )}
+          {arquivoDoJob(logAberto?.id ?? null) && (
+            <p className="text-xs text-muted-foreground">
+              Destino do backup:{" "}
+              <span className="font-mono">
+                backups/{arquivoDoJob(logAberto?.id ?? null)?.storage_path}
+              </span>
+            </p>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -788,8 +843,16 @@ function SecaoBackups({
             )}
             {arquivos.map((a) => (
               <TableRow key={a.id}>
-                <TableCell className="max-w-56 truncate font-mono text-xs">
-                  {a.nome_arquivo}
+                <TableCell
+                  className="max-w-56 truncate font-mono text-xs"
+                  title={`Destino: backups/${a.storage_path}`}
+                >
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-muted-foreground">
+                      backups/{(a.storage_path || "").split("/")[0] || ""}/
+                    </span>
+                    <span>{a.nome_arquivo}</span>
+                  </div>
                 </TableCell>
                 <TableCell>{a.instance_nome}</TableCell>
                 <TableCell>{formataData(a.criado_em)}</TableCell>
@@ -1344,6 +1407,9 @@ type FormInstancia = {
   credencial: string;
 };
 
+// Sanitização do prefixo é compartilhada com o servidor (src/backup/prefixo.ts)
+const normalizaPrefixoDestino = sanitizarPrefixoDestino;
+
 const FORM_VAZIO: FormInstancia = {
   nome: "",
   cliente_id: "nenhum",
@@ -1373,6 +1439,14 @@ function SecaoInstancias({
   const [form, setForm] = useState<FormInstancia>(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const [testandoId, setTestandoId] = useState<string | null>(null);
+
+  // Supabase exige usuário "postgres.<ref>" no pooler e "postgres" no host direto —
+  // e nunca aceita e-mail. Sugere o correto conforme o host preenchido.
+  const ref = form.project_ref.trim().toLowerCase();
+  const host = form.db_host.trim().toLowerCase();
+  const ehPooler = host.includes(".pooler.supabase.com");
+  const sugestaoUsuario = !ref ? null : ehPooler ? `postgres.${ref}` : "postgres";
+  const hostLabel = ehPooler ? "pooler" : "host direto (db.<ref>.supabase.com)";
 
   const abrirNovo = () => {
     setForm(FORM_VAZIO);
@@ -1415,11 +1489,15 @@ function SecaoInstancias({
             ? `db.${form.project_ref.trim().toLowerCase()}.supabase.com`
             : ""),
         db_port: Number(form.db_port) || 5432,
-        db_user: form.db_user.trim() || "postgres",
+        db_user:
+          form.db_user.trim().includes("@") && sugestaoUsuario
+            ? // Supabase não aceita e-mail como usuário do banco; corrige p/ formato válido
+              sugestaoUsuario
+            : form.db_user.trim() || "postgres",
         db_name: form.db_name.trim() || "postgres",
         ambiente: form.ambiente,
         credencial: form.credencial || undefined,
-        storage_prefix: form.storage_prefix.trim().toLowerCase(),
+        storage_prefix: normalizaPrefixoDestino(form.storage_prefix),
       };
       if (form.id) {
         await instanciasApi.editar({ id: form.id, ...dados });
@@ -1495,6 +1573,7 @@ function SecaoInstancias({
               <TableHead>Nome</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Projeto</TableHead>
+              <TableHead>Destino do backup</TableHead>
               <TableHead>Ambiente</TableHead>
               <TableHead>Conexão</TableHead>
               <TableHead>Credencial</TableHead>
@@ -1505,7 +1584,7 @@ function SecaoInstancias({
           <TableBody>
             {instancias.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   Nenhuma instância cadastrada.
                 </TableCell>
               </TableRow>
@@ -1670,6 +1749,9 @@ function SecaoInstancias({
               <p className="text-xs text-muted-foreground">
                 O .dump vai para o bucket privado <code className="font-mono">backups</code> do
                 banco central, dentro dessa pasta. Deixe em branco para usar o ref do projeto.
+                Aceita apenas minúsculas, números, ponto, hífen, sublinhado e barra — espaços e
+                acentos são convertidos automaticamente (ex.: <code className="font-mono">clientes/agrosilus</code>
+                ou <code className="font-mono">dados_cliente_3</code>).
               </p>
             </div>
 
@@ -1720,6 +1802,19 @@ function SecaoInstancias({
                   onChange={(e) => setForm({ ...form, db_user: e.target.value })}
                   className="font-mono"
                 />
+                {sugestaoUsuario && form.db_user.trim() !== sugestaoUsuario && (
+                  <p
+                    className={
+                      form.db_user.includes("@")
+                        ? "text-xs font-medium text-amber-600 dark:text-amber-400"
+                        : "text-xs text-muted-foreground"
+                    }
+                  >
+                    {form.db_user.includes("@")
+                      ? `⚠️ Não use e-mail — o Supabase não aceita. Para o host ${hostLabel}, use: ${sugestaoUsuario}`
+                      : `Para o host ${hostLabel}, use: ${sugestaoUsuario}`}
+                  </p>
+                )}
               </div>
             </div>
 
