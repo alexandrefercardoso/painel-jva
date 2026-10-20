@@ -17,6 +17,9 @@ export function PainelLayout({ children }: { children: ReactNode }) {
             <Link to="/modulos" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
               Módulos
             </Link>
+            <Link to="/backup" className="text-muted-foreground hover:text-foreground" activeProps={{ className: "text-foreground font-medium" }}>
+              Backup
+            </Link>
           </nav>
         </div>
         </div>
