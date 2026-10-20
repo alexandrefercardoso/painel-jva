@@ -36,9 +36,9 @@ jobs:
       - name: Garantir PostgreSQL Client 17 (pg_dump/pg_restore)
         run: |
           set -euo pipefail
-          # pg_dump NÃO pode ser mais antigo que o servidor (Supabase: PG15/16/17).
-          # O ubuntu-latest já vem com cliente 16 pré-instalado, por isso instalamos
-          # a versão explicitamente — sem "if command -v" que pulava a atualização.
+          # pg_dump/pg_restore NÃO podem ser mais antigos que o servidor (Supabase:
+          # PG15/16/17). O ubuntu-latest vem com cliente 16 pré-instalado em /usr/bin —
+          # daí instalamos o 17 explicitamente e antecipa o bindir do 17 no PATH.
           sudo apt-get update -qq
           if ! sudo apt-get install -y --no-install-recommends postgresql-client-17; then
             sudo apt-get install -y --no-install-recommends postgresql-common apt-transport-https
@@ -46,7 +46,22 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends postgresql-client-17
           fi
-          echo "Cliente presente:"; pg_dump --version; pg_restore --version
+          BIN17=/usr/lib/postgresql/17/bin
+          sudo update-alternatives --set pg_dump "$BIN17/pg_dump" >/dev/null 2>&1 || true
+          sudo update-alternatives --set pg_restore "$BIN17/pg_restore" >/dev/null 2>&1 || true
+          if [ -d "$BIN17" ]; then
+            echo "$BIN17" >> "$GITHUB_PATH"
+          fi
+          VDUMPP="$(command -v pg_dump)"; VRESTP="$(command -v pg_restore)"
+          VDUMP="$(pg_dump --version)"; VREST="$(pg_restore --version)"
+          echo "pg_dump: $VDUMP ($VDUMPP)"; echo "pg_restore: $VREST ($VRESTP)"
+          case "$VDUMP;$VREST" in
+            *17*|*18*|*19*) : ;;
+            *)
+              echo "::error::Cliente PostgreSQL < 17 no PATH — pg_dump:$VDUMP pg_restore:$VREST"
+              exit 1
+              ;;
+          esac
 
       - name: Executar worker (fila de backups)
         env:

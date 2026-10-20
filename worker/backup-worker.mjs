@@ -592,6 +592,11 @@ async function processarJob(job) {
         + "executou o passo 'Garantir PostgreSQL Client 17' e se o pg_dump é da versão "
         + "igual/superior à do servidor (busque 'pg_dump: detail: server version').";
     }
+    if (mensagem.includes("unsupported version (1.")) {
+      mensagem += " — O pg_restore do worker é mais antigo que o pg_dump (formatos "
+        + "incompatíveis). O workflow 'backup-worker.yml' fixa ambos na versão 17 "
+        + "(bindir /usr/lib/postgresql/17/bin no PATH); confira se essa etapa rodou.";
+    }
     logErro(`Job ${job.id} falhou: ${mensagem}`);
     passos.push(`[FALHA] ${mensagem}`);
 
