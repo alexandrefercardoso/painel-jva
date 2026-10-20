@@ -321,6 +321,7 @@ BEGIN
   IF p_status NOT IN ('pendente','pendente_precheck') THEN
     RAISE EXCEPTION 'status invalido para concessao: % (use pendente ou pendente_precheck)', p_status;
   END IF;
+  RETURN QUERY
   UPDATE public.restore_jobs r
      SET status = 'executando',
          lease_expirar = now() + make_interval(mins => p_lease_minutos),
@@ -329,7 +330,8 @@ BEGIN
      SELECT pj.id FROM public.restore_jobs pj
       WHERE pj.status = p_status
       FOR UPDATE SKIP LOCKED
-   ) RETURNING r.*;
+   )
+   RETURNING r.*;
 END;
 $$;
 

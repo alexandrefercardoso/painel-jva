@@ -12,6 +12,10 @@
 -- O CREATE OR REPLACE cria uma NOVA sobrecarga (p_status, p_lease_minutos);
 -- a antiga (p_lease_minutos) continua válida — nada quebra no meio do caminho.
 -- Reexecutar este script é seguro (idempotente).
+--
+-- ATENÇÃO: em PL/pgSQL, "UPDATE ... RETURNING" como última instrução dispara
+-- 42601 (query has no destination for result data). O retorno das linhas
+-- precisa ser explícito: RETURN QUERY UPDATE ... RETURNING ...
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.restore_reivindicar_job(
@@ -26,6 +30,7 @@ BEGIN
   IF p_status NOT IN ('pendente','pendente_precheck') THEN
     RAISE EXCEPTION 'status invalido para concessao: % (use pendente ou pendente_precheck)', p_status;
   END IF;
+  RETURN QUERY
   UPDATE public.restore_jobs r
      SET status = 'executando',
          lease_expirar = now() + make_interval(mins => p_lease_minutos),
@@ -34,7 +39,8 @@ BEGIN
      SELECT pj.id FROM public.restore_jobs pj
       WHERE pj.status = p_status
       FOR UPDATE SKIP LOCKED
-   ) RETURNING r.*;
+   )
+   RETURNING r.*;
 END;
 $$;
 
