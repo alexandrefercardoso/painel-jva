@@ -402,6 +402,18 @@ function objetosDoDump(caminhoDump) {
 // ---------------------------------------------------------------------------
 async function processarJob(job) {
   log(`Job ${job.id} — início`);
+  const passos = [];
+  const passo = async (texto) => {
+    passos.push(`[${new Date().toISOString().slice(11, 19)}] ${texto}`);
+    log(texto);
+    // Persiste o log no job (visível no painel em tempo quase real)
+    try {
+      await dbUpdate("backup_jobs", { log_execucao: passos.join("\n") }, `id=eq.${job.id}`);
+    } catch (e) {
+      logErro(`Falha ao gravar log_execucao do job: ${sanitizar(e)}`);
+    }
+  };
+  await passo(`Job recebido pela fila (tentativa ${job.tentativas ?? 1}/${job.max_tentativas ?? 2}).`);
   const instancias = await dbSelect("backup_instances", {
     id: `eq.${job.instance_id}`,
     select: "*",
@@ -431,9 +443,17 @@ async function processarJob(job) {
     const nomeArquivo = nomeArquivoBackup(instancia.nome, job.criado_em);
     const caminhoDump = path.join(dirTemp, nomeArquivo);
 
+    // Destino no bucket: prefixo configurável da instância (fallback project_ref)
+    const destinoBase = String(instancia.storage_prefix ?? "").trim() || instancia.project_ref;
+
+    await passo(
+      `Conectando em ${instancia.db_host}:${instancia.db_port}/${instancia.db_name} (destino do dump: backups/${destinoBase}/)`,
+    );
+
     // 1. pg_dump — senha via PGPASSWORD (env), nunca no argv do processo
     const versao = versaoPgDump();
     log(`pg_dump: ${versao}`);
+    await passo(`pg_dump iniciando (${versao.split(" ").slice(0, 2).join(" ")})`);
     execFileSync(
       "pg_dump",
       [
@@ -462,6 +482,7 @@ async function processarJob(job) {
 
     const stat = fs.statSync(caminhoDump);
     if (stat.size === 0) throw new Error("pg_dump produziu arquivo vazio.");
+    await passo(`pg_dump concluído — arquivo com ${stat.size} bytes`);
 
     // 2. Estado validando: após gerar o dump, entra em fase de validação
     await dbUpdate("backup_jobs", { status: "validando" }, `id=eq.${job.id}`);
@@ -469,12 +490,16 @@ async function processarJob(job) {
     // 3. Validação estrutural + inventário
     const inventario = inventarioDoDump(caminhoDump);
     log(`Dump íntegro: ${inventario.entradas} entradas; schemas: ${inventario.schemas.join(", ")}`);
+    await passo(
+      `Validei integridade estrutural: ${inventario.entradas} entradas (${inventario.schemas.length} schemas)`,
+    );
 
     // 4. Checksum + tamanho
     const sha256 = await sha256Arquivo(caminhoDump);
+    await passo(`SHA-256 calculado: ${sha256}`);
 
     // 5. Upload ao bucket privado 'backups' (segredos só no header)
-    const storagePath = `${instancia.project_ref}/${nomeArquivo}`;
+    const storagePath = `${destinoBase}/${nomeArquivo}`;
     execFileSync(
       "curl",
       [
@@ -497,6 +522,7 @@ async function processarJob(job) {
       { timeout: TIMEOUT_UPLOAD_MS, stdio: ["ignore", "ignore", "pipe"] },
     );
     log(`Upload concluído: backups/${storagePath}`);
+    await passo(`Upload concluído no bucket privado: backups/${storagePath}`);
 
     // 6. Registro do arquivo (audit: origem já cobre 'worker')
     const arquivo = await dbInsert("backup_files", {
@@ -516,6 +542,7 @@ async function processarJob(job) {
         versao_pg_dump: versao,
       },
     });
+    await passo(`Arquivo registrado (backup_files ${arquivo.id.slice(0, 8)}…).`);
 
     // 7. Conclui o job
     const inicioMs = Date.parse(job.iniciado_em ?? job.criado_em ?? "") || Date.now();
@@ -529,6 +556,7 @@ async function processarJob(job) {
         finalizado_em: new Date().toISOString(),
         erro: null,
         duracao_seg: duracaoSeg,
+        log_execucao: passos.join("\n"),
       },
       `id=eq.${job.id}`,
     );
@@ -559,6 +587,7 @@ async function processarJob(job) {
   } catch (erro) {
     const mensagem = sanitizar(erro?.message ?? String(erro)).slice(0, 800);
     logErro(`Job ${job.id} falhou: ${mensagem}`);
+    passos.push(`[FALHA] ${mensagem}`);
 
     if (falhaDeConexao(mensagem)) {
       try {
@@ -602,6 +631,24 @@ async function finalizarFalha(job, mensagemSanitizada) {
         },
     `id=eq.${job.id}`,
   );
+  // Anexa a falha ao log (se existir coluna log_execucao)
+  try {
+    const atuais = await dbSelect("backup_jobs", {
+      id: `eq.${job.id}`,
+      select: "log_execucao",
+      limit: "1",
+    });
+    if (atuais?.length) {
+      const base = atuais[0].log_execucao ? `${atuais[0].log_execucao}\n` : "";
+      await dbUpdate(
+        "backup_jobs",
+        { log_execucao: `${base}[FALHA] ${mensagemSanitizada}`.slice(0, 12000) },
+        `id=eq.${job.id}`,
+      );
+    }
+  } catch {
+    // coluna pode não existir ainda — sem bloqueio
+  }
   await auditoria("backup.falha", job.instance_id, {
     job_id: job.id,
     erro: mensagemSanitizada.slice(0, 400),

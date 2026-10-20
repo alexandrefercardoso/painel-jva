@@ -69,6 +69,7 @@ export const instanciasApi = {
         db_name: dados.db_name || "postgres",
         ambiente: dados.ambiente ?? "producao",
         credencial: dados.credencial || null,
+        storage_prefix: dados.storage_prefix ?? "",
       },
     }),
   editar: (dados: Partial<InstanciaResumo> & { id: string; credencial?: string }) =>
@@ -85,6 +86,7 @@ export const instanciasApi = {
         db_name: dados.db_name || "postgres",
         ambiente: dados.ambiente ?? "producao",
         credencial: dados.credencial || null,
+        storage_prefix: dados.storage_prefix ?? "",
       },
     }),
   excluir: (id: string) => backupExcluirInstancia({ data: { id } }),

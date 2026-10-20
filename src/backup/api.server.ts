@@ -45,6 +45,7 @@ export type InstanciaResumo = {
   status_conexao: "desconhecido" | "ok" | "falha";
   status_detalhe: string | null;
   credencial_ok: boolean;
+  storage_prefix: string | null;
   ultimo_backup_em: string | null;
   criado_em: string;
 };
@@ -382,6 +383,16 @@ const validatorInstancia = z.object({
   db_name: z.string().min(1).max(63).default("postgres"),
   ambiente: z.enum(["producao", "homologacao", "desenvolvimento"]),
   credencial: z.string().min(4).max(200).nullable().optional(), // senha do banco postgres
+  storage_prefix: z
+    .string()
+    .max(120)
+    .regex(
+      /^[a-z0-9._\/-]*$/,
+      "Prefixo aceita apenas letras minúsculas, números, ponto, hífen, sublinhado ou barra.",
+    )
+    .transform((v) => v.replace(/^\/+|\/+$/g, ""))
+    .nullable()
+    .optional(), // destino no bucket (vazio = project_ref)
 });
 
 const SEM_SENDA = (row: Record<string, unknown>) => {
@@ -406,6 +417,7 @@ export const backupCriarInstancia = createServerFn({ method: "POST" })
         db_user: data.db_user,
         db_name: data.db_name,
         ambiente: data.ambiente,
+        storage_prefix: data.storage_prefix ?? "",
         credencial_cripto: data.credencial ? criptografar(data.credencial) : null,
         credencial_ok: Boolean(data.credencial),
       })
@@ -431,6 +443,7 @@ export const backupEditarInstancia = createServerFn({ method: "POST" })
       db_user: data.db_user,
       db_name: data.db_name,
       ambiente: data.ambiente,
+      storage_prefix: data.storage_prefix ?? "",
     };
     if (data.credencial !== undefined && data.credencial !== null && data.credencial !== "") {
       updates.credencial_cripto = criptografar(data.credencial);
@@ -614,6 +627,7 @@ export type BackupJobResumo = {
   tentativas: number;
   max_tentativas: number;
   erro: string | null;
+  log_execucao: string | null;
   versao_pg_dump: string | null;
   arquivo_id: string | null;
   iniciado_em: string | null;

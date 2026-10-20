@@ -9,6 +9,7 @@ import {
   Database,
   Download,
   History,
+  Loader2,
   Pencil,
   PlugZap,
   Plus,
@@ -545,16 +546,16 @@ function formataBytes(valor: number | null | undefined): string {
 
 const ROTULO_STATUS_JOB: Record<BackupJobResumo["status"], { rotulo: string; classe: string }> = {
   pendente: {
-    rotulo: "Aguardando",
+    rotulo: "Aguardando worker",
     classe: "border-muted-foreground/40 bg-muted text-muted-foreground",
   },
   executando: {
     rotulo: "Executando",
-    classe: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    classe: "animate-pulse border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400",
   },
   validando: {
     rotulo: "Validando",
-    classe: "border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+    classe: "animate-pulse border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
   },
   concluido: {
     rotulo: "Concluído",
@@ -588,7 +589,7 @@ function SecaoBackups({
   const [instanciaSelecionada, setInstanciaSelecionada] = useState("");
   const [executando, setExecutando] = useState(false);
   const [verificandoId, setVerificandoId] = useState<string | null>(null);
-
+  const [logAberto, setLogAberto] = useState<BackupJobResumo | null>(null);
   // Enquanto houver operação pendente/executando/validando, atualiza a cada 5s
   const haOperacaoAtiva = operacoes.some((o) =>
     ["pendente", "executando", "validando"].includes(o.status),
@@ -709,6 +710,9 @@ function SecaoBackups({
                     className="flex flex-wrap items-center justify-between gap-2 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
+                      {["executando", "validando"].includes(op.status) && (
+                        <Loader2 className="size-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                      )}
                       <Badge className={status.classe}>{status.rotulo}</Badge>
                       <span className="font-medium">{op.instance_nome}</span>
                       <span className="text-xs text-muted-foreground">
@@ -716,15 +720,27 @@ function SecaoBackups({
                         {formataData(op.criado_em)}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {op.status === "concluido"
-                        ? `concluído em ${op.finalizado_em ? formataData(op.finalizado_em) : "—"}${
-                            op.versao_pg_dump ? ` · ${op.versao_pg_dump}` : ""
-                          }`
-                        : op.erro
-                          ? op.erro
-                          : `tentativa ${op.tentativas}/${op.max_tentativas}`}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {op.log_execucao && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setLogAberto(op)}
+                        >
+                          <History className="size-3.5" /> Log
+                        </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {op.status === "concluido"
+                          ? `concluído em ${op.finalizado_em ? formataData(op.finalizado_em) : "—"}${
+                              op.versao_pg_dump ? ` · ${op.versao_pg_dump}` : ""
+                            }`
+                          : op.erro
+                            ? op.erro
+                            : `tentativa ${op.tentativas}/${op.max_tentativas}`}
+                      </span>
+                    </div>
                   </li>
                 );
               })}
@@ -732,6 +748,22 @@ function SecaoBackups({
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={logAberto !== null} onOpenChange={(aberto) => !aberto && setLogAberto(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Log da operação — {logAberto?.instance_nome ?? "—"}
+            </DialogTitle>
+            <DialogDescription>
+              Passo a passo executado pelo worker (GitHub Actions → pg_dump → validação → bucket).
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[50vh] overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+            {logAberto?.log_execucao ?? ""}
+          </pre>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-md border">
         <Table>
@@ -1302,6 +1334,7 @@ type FormInstancia = {
   nome: string;
   cliente_id: string;
   project_ref: string;
+  storage_prefix: string;
   supabase_url: string;
   db_host: string;
   db_port: string;
@@ -1315,6 +1348,7 @@ const FORM_VAZIO: FormInstancia = {
   nome: "",
   cliente_id: "nenhum",
   project_ref: "",
+  storage_prefix: "",
   supabase_url: "",
   db_host: "",
   db_port: "5432",
@@ -1351,6 +1385,7 @@ function SecaoInstancias({
       nome: inst.nome,
       cliente_id: inst.cliente_id ?? "nenhum",
       project_ref: inst.project_ref,
+      storage_prefix: inst.storage_prefix ?? "",
       supabase_url: inst.supabase_url ?? "",
       db_host: inst.db_host,
       db_port: String(inst.db_port),
@@ -1384,6 +1419,7 @@ function SecaoInstancias({
         db_name: form.db_name.trim() || "postgres",
         ambiente: form.ambiente,
         credencial: form.credencial || undefined,
+        storage_prefix: form.storage_prefix.trim().toLowerCase(),
       };
       if (form.id) {
         await instanciasApi.editar({ id: form.id, ...dados });
@@ -1487,7 +1523,14 @@ function SecaoInstancias({
                     )}
                   </TableCell>
                   <TableCell>{nomeCliente(inst.cliente_id) ?? "—"}</TableCell>
-                  <TableCell className="font-mono text-xs">{inst.project_ref}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {inst.project_ref}
+                    {inst.storage_prefix ? (
+                      <div className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                        ➜ <span>{inst.storage_prefix}/</span>
+                      </div>
+                    ) : null}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -1613,6 +1656,21 @@ function SecaoInstancias({
                 placeholder="20 caracteres — ex.: hepvdpktubhcklerdvqb"
                 className="font-mono"
               />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="inst-destino">Destino do backup (pasta no bucket)</Label>
+              <Input
+                id="inst-destino"
+                value={form.storage_prefix}
+                onChange={(e) => setForm({ ...form, storage_prefix: e.target.value })}
+                placeholder="Vazio = usa o próprio ref — ex.: clientes/agrosilus"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                O .dump vai para o bucket privado <code className="font-mono">backups</code> do
+                banco central, dentro dessa pasta. Deixe em branco para usar o ref do projeto.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
