@@ -27,7 +27,9 @@ concurrency:
 
 jobs:
   worker:
-    runs-on: ubuntu-latest
+    # Fixado no 24.04: o ubuntu-latest migrou p/ Ubuntu 26 (out/2026) e o passo
+    # de cliente PostgreSQL ficou instável; 24.04 tem pgdg/cliente-17 garantidos.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -37,31 +39,53 @@ jobs:
         run: |
           set -euo pipefail
           # pg_dump/pg_restore NÃO podem ser mais antigos que o servidor (Supabase:
-          # PG15/16/17). O ubuntu-latest vem com cliente 16 pré-instalado em /usr/bin —
-          # daí instalamos o 17 explicitamente e antecipa o bindir do 17 no PATH.
+          # PG15/16/17). Instalamos o cliente explicitamente e exportamos os caminhos
+          # ABSOLUTOS (PG_DUMP_BIN/PG_RESTORE_BIN) para o worker — nada de depender
+          # de PATH/pg_wrapper/alternatives do runner, que podem servir o 16 mesmo
+          # com o pacote "instalado".
           sudo apt-get update -qq
-          if ! sudo apt-get install -y --no-install-recommends postgresql-client-17; then
-            sudo apt-get install -y --no-install-recommends postgresql-common apt-transport-https
+          ACHOU=""
+          for V in 17 18; do
+            if sudo apt-get install -y --no-install-recommends postgresql-client-$V; then
+              ACHOU=$V
+              break
+            fi
+            echo "postgresql-client-$V indisponível — adicionando repositório pgdg…"
+            sudo apt-get install -y --no-install-recommends postgresql-common apt-transport-https ca-certificates
             sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
             sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends postgresql-client-17
+            if sudo apt-get install -y --no-install-recommends postgresql-client-$V; then
+              ACHOU=$V
+              break
+            fi
+          done
+          if [ -z "$ACHOU" ]; then
+            echo "Diagnóstico do apt:"
+            lsb_release -ds || cat /etc/os-release | head -1
+            apt-cache policy postgresql-client postgresql-client-17 || true
+            echo "::error::Nenhum cliente PostgreSQL >= 17 disponível no runner."
+            exit 1
           fi
-          BIN17=/usr/lib/postgresql/17/bin
-          sudo update-alternatives --set pg_dump "$BIN17/pg_dump" >/dev/null 2>&1 || true
-          sudo update-alternatives --set pg_restore "$BIN17/pg_restore" >/dev/null 2>&1 || true
-          if [ -d "$BIN17" ]; then
-            echo "$BIN17" >> "$GITHUB_PATH"
+          BINDIR=/usr/lib/postgresql/$ACHOU/bin
+          if [ ! -x "$BINDIR/pg_dump" ]; then
+            echo "Diagnóstico: ls /usr/lib/postgresql/"
+            ls /usr/lib/postgresql/ || true
+            echo "::error::Binário do cliente $ACHOU não encontrado em $BINDIR."
+            exit 1
           fi
-          VDUMPP="$(command -v pg_dump)"; VRESTP="$(command -v pg_restore)"
-          VDUMP="$(pg_dump --version)"; VREST="$(pg_restore --version)"
-          echo "pg_dump: $VDUMP ($VDUMPP)"; echo "pg_restore: $VREST ($VRESTP)"
+          VDUMP="$("$BINDIR/pg_dump" --version)"
+          VREST="$("$BINDIR/pg_restore" --version)"
+          echo "pg_dump:   $VDUMP"
+          echo "pg_restore: $VREST"
           case "$VDUMP;$VREST" in
             *17*|*18*|*19*) : ;;
             *)
-              echo "::error::Cliente PostgreSQL < 17 no PATH — pg_dump:$VDUMP pg_restore:$VREST"
+              echo "::error::Cliente PostgreSQL < 17 — pg_dump:$VDUMP pg_restore:$VREST"
               exit 1
               ;;
           esac
+          echo "PG_DUMP_BIN=$BINDIR/pg_dump" >> "$GITHUB_ENV"
+          echo "PG_RESTORE_BIN=$BINDIR/pg_restore" >> "$GITHUB_ENV"
 
       - name: Executar worker (fila de backups)
         env:

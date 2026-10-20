@@ -62,6 +62,12 @@ const TIMEOUT_PG_RESTORE_MS = 30 * 60 * 1000;
 const TIMEOUT_DOWNLOAD_MS = 10 * 60 * 1000;
 const TIMEOUT_SQL_MS = 60 * 1000;
 
+// Caminho absoluto das ferramentas (workflow fixa /usr/lib/postgresql/17/bin).
+// Evita depender de PATH/pg_wrapper/alternatives do runner, que podem servir
+// um cliente desatualizado mesmo com o pacote "instalado".
+const PG_DUMP_BIN = process.env.PG_DUMP_BIN?.trim() || "pg_dump";
+const PG_RESTORE_BIN = process.env.PG_RESTORE_BIN?.trim() || "pg_restore";
+
 // Schemas gerenciados pelo Supabase: nunca restaurados por cima (Modo B
 // exclui; Modo A rejeita como alvo). 'extensions' fica fora da migração
 // porque pertence ao destino do projeto.
@@ -234,7 +240,7 @@ function descriptografar(blob) {
 // Utilidades
 // ---------------------------------------------------------------------------
 function versaoPgDump() {
-  return execFileSync("pg_dump", ["--version"], { encoding: "utf8" }).trim();
+  return execFileSync(PG_DUMP_BIN, ["--version"], { encoding: "utf8" }).trim();
 }
 
 function slug(valor) {
@@ -274,7 +280,7 @@ function sha256Arquivo(caminho) {
  * total de entradas, distribuição por tipo de objeto e schemas presentes.
  */
 function inventarioDoDump(caminhoDump) {
-  const toc = execFileSync("pg_restore", ["--list", caminhoDump], {
+  const toc = execFileSync(PG_RESTORE_BIN, ["--list", caminhoDump], {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
   });
@@ -352,7 +358,7 @@ function psqlConsulta(instancia, senha, sql) {
  * nº de tabelas (estrutura), nº de TABLE DATA (dados) e nomes das tabelas.
  */
 function objetosDoDump(caminhoDump) {
-  const toc = execFileSync("pg_restore", ["--list", caminhoDump], {
+  const toc = execFileSync(PG_RESTORE_BIN, ["--list", caminhoDump], {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
   });
@@ -455,7 +461,7 @@ async function processarJob(job) {
     log(`pg_dump: ${versao}`);
     await passo(`pg_dump iniciando (${versao.split(" ").slice(0, 2).join(" ")})`);
     execFileSync(
-      "pg_dump",
+      PG_DUMP_BIN,
       [
         "--format=custom",
         "--no-owner",
@@ -1098,7 +1104,7 @@ async function processarExecucaoRestore(job) {
       // só os schemas que serão substituídos
       for (const schema of alvos) argsSeg.push("--schema", schema);
     }
-    execFileSync("pg_dump", argsSeg, {
+    execFileSync(PG_DUMP_BIN, argsSeg, {
       env: { ...process.env, PGPASSWORD: senhaDestino },
       timeout: TIMEOUT_PG_DUMP_MS,
       encoding: "buffer",
@@ -1198,7 +1204,7 @@ async function processarExecucaoRestore(job) {
     argsRestore.push(caminho);
 
     try {
-      execFileSync("pg_restore", argsRestore, {
+      execFileSync(PG_RESTORE_BIN, argsRestore, {
         env: { ...process.env, PGPASSWORD: senhaDestino },
         timeout: TIMEOUT_PG_RESTORE_MS,
         encoding: "utf8",
