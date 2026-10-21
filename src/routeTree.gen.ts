@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BackupRouteImport } from './routes/backup'
 import { Route as ModulosRouteImport } from './routes/modulos'
 import { Route as ProdutosRouteImport } from './routes/produtos'
+import { Route as SqlRouteImport } from './routes/sql'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const ProdutosRoute = ProdutosRouteImport.update({
   path: '/produtos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SqlRoute = SqlRouteImport.update({
+  id: '/sql',
+  path: '/sql',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIdRoute = ClientesIdRouteImport.update({
   id: '/clientes/$id',
   path: '/clientes/$id',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/backup': typeof BackupRoute
   '/modulos': typeof ModulosRoute
   '/produtos': typeof ProdutosRoute
+  '/sql': typeof SqlRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/backup': typeof BackupRoute
   '/modulos': typeof ModulosRoute
   '/produtos': typeof ProdutosRoute
+  '/sql': typeof SqlRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,23 @@ export interface FileRoutesById {
   '/backup': typeof BackupRoute
   '/modulos': typeof ModulosRoute
   '/produtos': typeof ProdutosRoute
+  '/sql': typeof SqlRoute
   '/clientes/$id': typeof ClientesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/backup' | '/modulos' | '/produtos' | '/clientes/$id'
+  fullPaths:
+    '/' | '/backup' | '/modulos' | '/produtos' | '/sql' | '/clientes/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/backup' | '/modulos' | '/produtos' | '/clientes/$id'
-  id: '__root__' | '/' | '/backup' | '/modulos' | '/produtos' | '/clientes/$id'
+  to: '/' | '/backup' | '/modulos' | '/produtos' | '/sql' | '/clientes/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/backup'
+    | '/modulos'
+    | '/produtos'
+    | '/sql'
+    | '/clientes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +93,7 @@ export interface RootRouteChildren {
   BackupRoute: typeof BackupRoute
   ModulosRoute: typeof ModulosRoute
   ProdutosRoute: typeof ProdutosRoute
+  SqlRoute: typeof SqlRoute
   ClientesIdRoute: typeof ClientesIdRoute
 }
 
@@ -109,6 +127,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sql': {
+      id: '/sql'
+      path: '/sql'
+      fullPath: '/sql'
+      preLoaderRoute: typeof SqlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/$id': {
       id: '/clientes/$id'
       path: '/clientes/$id'
@@ -124,6 +149,7 @@ const rootRouteChildren: RootRouteChildren = {
   BackupRoute: BackupRoute,
   ModulosRoute: ModulosRoute,
   ProdutosRoute: ProdutosRoute,
+  SqlRoute: SqlRoute,
   ClientesIdRoute: ClientesIdRoute,
 }
 export const routeTree = rootRouteImport
