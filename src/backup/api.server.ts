@@ -261,6 +261,46 @@ function getAdminDb(): SupabaseClient {
 }
 
 // ---------------------------------------------------------------------------
+// Disparo imediato do worker (GitHub Actions)
+// ---------------------------------------------------------------------------
+// O worker processa a fila a cada 5 min (cron). Quando o painel enfileira um
+// trabalho (backup manual, precheck de restore, restore confirmado), podemos
+// acionar a fila IMEDIATAMENTE via workflow_dispatch — sem esperar o cron.
+//
+// Configuração OPCIONAL na Vercel:
+//   GITHUB_WORKER_PAT    — fine-grained PAT com permissões "Actions: Read and
+//                          write" e "Metadata: Read" no repositório do worker
+//   GITHUB_WORKER_REPO   — "dono/repo" (padrão: alexandrefercardoso/painel-jva)
+//   GITHUB_WORKER_BRANCH — branch do workflow (padrão: main)
+// Sem token, a função simplesmente não faz nada — o cron dos 5 min cobre.
+// Falha é SEMPRE silenciosa: o job já está na fila do banco central.
+async function dispararWorkerGitHub(): Promise<void> {
+  const token = process.env.GITHUB_WORKER_PAT;
+  if (!token) return;
+  const repo = process.env.GITHUB_WORKER_REPO ?? "alexandrefercardoso/painel-jva";
+  const branch = process.env.GITHUB_WORKER_BRANCH ?? "main";
+  const url = `https://api.github.com/repos/${repo}/actions/workflows/backup-worker.yml/dispatches`;
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "painel-jva-backup",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ref: branch }),
+    });
+    if (resp.status !== 204) {
+      console.warn(`[backup] Dispatch do GitHub não confirmado (HTTP ${resp.status}).`);
+    }
+  } catch (e) {
+    console.warn("[backup] Falha ao disparar worker no GitHub Actions:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Teste de conexão (TCP puro — sem binários pg no Vercel)
 // ---------------------------------------------------------------------------
 function testarTcp(host: string, port: number, timeoutMs: number): Promise<ResultadoTesteConexao> {
@@ -709,6 +749,10 @@ export const backupCriarBackup = createServerFn({ method: "POST" })
     if (erroJob || !job)
       throw new Error(sanitizarMensagem(erroJob?.message ?? "Falha ao enfileirar"));
 
+    // Worker imediato: dispara o GitHub Actions agora (best-effort, nunca
+    // bloqueia a resposta) em vez de esperar o cron de 5 minutos
+    if (process.env.GITHUB_WORKER_PAT) void dispararWorkerGitHub();
+
     await auditoria("backup.criar_job", data.instance_id, { job_id: job.id, tipo: "manual" });
     return { ok: true as const, job_id: job.id as string };
   });
@@ -1031,6 +1075,9 @@ export const restoreCriarPrecheck = createServerFn({ method: "POST" })
     if (erroJob || !job)
       throw new Error(sanitizarMensagem(erroJob?.message ?? "Falha ao criar precheck"));
 
+    // Worker imediato: precheck não precisa esperar o cron de 5 minutos
+    if (process.env.GITHUB_WORKER_PAT) void dispararWorkerGitHub();
+
     await auditoria("restore.criar_precheck", destino.id, {
       restore_job_id: job.id,
       arquivo_id: arquivo.id,
@@ -1165,6 +1212,9 @@ export const restoreConfirmar = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (erroUpd) throw new Error(sanitizarMensagem(erroUpd.message));
+
+    // Worker imediato: o restore confirmado não precisa esperar o cron
+    if (process.env.GITHUB_WORKER_PAT) void dispararWorkerGitHub();
 
     await auditoria("restore.confirmado", r.destino_instance_id as string, {
       restore_job_id: data.id,

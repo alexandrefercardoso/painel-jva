@@ -5,6 +5,12 @@
 # pendentes no banco central a cada 5 minutos; roda manualmente pela aba
 # Actions (workflow_dispatch) se necessário.
 #
+# DISPARO IMEDIATO: o painel também aciona este workflow automaticamente
+# (workflow_dispatch) no momento em que enfileira um backup/restore — assim a
+# fila é processada em segundos, sem esperar o cron. Para isso a Vercel precisa
+# de GITHUB_WORKER_PAT (fine-grained PAT com permissão "Actions: write" no
+# repositório). Sem o token, o cron de 5 minutos segue processando tudo.
+#
 # SECRETS OBRIGATÓRIOS (GitHub > Settings > Secrets and variables > Actions):
 #   SUPABASE_URL              — https://hepvdpktubhcklerdvqb.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY — service_role do banco central (NUNCA a anon key;
